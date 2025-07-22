@@ -1,4 +1,0 @@
-to do list:
-
-1. change rg 0 logic
-2. check the memory leak or not
