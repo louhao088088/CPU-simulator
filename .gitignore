@@ -1,23 +1,19 @@
-# 编译输出文件
+
 *.out
 *.o
 cpu_simulator
 simpleCPU
 
-# 编译临时目录
 obj/
 build/
 
-# CMake 生成的文件
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
 Makefile
 
-# 日志文件
 *.log
 
-# 临时文件
 code
 to_do_list.txt
 *.tmp
@@ -25,6 +21,7 @@ to_do_list.txt
 *~
 
 
-# 测试用例（如果不想提交）
 testcases
 # test.cpp
+
+.vscode/
