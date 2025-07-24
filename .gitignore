@@ -3,3 +3,5 @@ test.cpp
 *.out
 code
 to_do_list.txt
+*.log
+*.out
