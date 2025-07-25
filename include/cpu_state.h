@@ -2,9 +2,10 @@
 #define CPU_STATE_H
 
 #include <cstdint>
-#include <queue>
-#include <vector>
+#include <iostream>
 
+using std::cerr;
+using std::cout;
 const int MEMORY_SIZE = 1024 * 1024;
 const uint32_t HALT_INSTRUCTION = 0x0ff00513;
 const int ROB_SIZE = 32;
@@ -69,7 +70,7 @@ struct RATEntry {
     RATEntry() : busy(false), rob_idx(0) {}
 };
 
-// 架构寄存器文件（程序员可见的寄存器）
+// 架构寄存器文件
 struct ArchRegisterFile {
     uint32_t regs[32];
 
@@ -97,7 +98,7 @@ struct ROBEntry {
     uint32_t target_pc;   // 跳转目标地址
     bool actual_taken;    // 实际是否跳转
 
-    // 源操作数信息（用于重命名阶段）
+    // 源操作数信息
     uint32_t rs1, rs2; // 源寄存器编号
     uint32_t imm;      // 立即数
 
@@ -111,11 +112,11 @@ struct RSEntry {
     bool busy;             // 是否被占用
     InstrType op;          // 操作类型
     uint32_t Vj, Vk;       // 操作数值
-    uint32_t Qj, Qk;       // 操作数依赖的ROB索引（0表示操作数就绪）
+    uint32_t Qj, Qk;       // 操作数依赖的ROB索引
     uint32_t dest_rob_idx; // 对应的ROB条目索引
-    uint32_t imm;          // 立即数（如果需要）
+    uint32_t imm;          // 立即数
 
-    // 执行计时器（模拟多周期执行）
+    // 执行计时器(内存操作可能要三周期)
     int execution_cycles_left;
 
     RSEntry() : busy(false), Qj(0), Qk(0), execution_cycles_left(0) {}
@@ -129,15 +130,15 @@ struct LSQEntry {
     bool busy;             // 是否被占用
     InstrType op;          // LOAD或STORE类型
     uint32_t address;      // 内存地址
-    uint32_t value;        // 要存储的值（STORE用）
+    uint32_t value;        // 要存储的值
     uint32_t dest_rob_idx; // 对应的ROB条目索引
     bool address_ready;    // 地址是否已计算
-    bool value_ready;      // 值是否就绪（STORE用）
-    uint32_t rob_idx;      // 在ROB中的位置（用于保序）
+    bool value_ready;      // 值是否就绪
+    uint32_t rob_idx;      // 在ROB中的位置
 
     // 地址计算操作数
     uint32_t base_value;   // 基址寄存器的值
-    uint32_t base_rob_idx; // 基址寄存器依赖的ROB索引（0表示就绪）
+    uint32_t base_rob_idx; // 基址寄存器依赖的ROB索引
     uint32_t offset;       // 偏移量
 
     LSQEntry() : busy(false), address_ready(false), value_ready(false), base_rob_idx(0) {}
@@ -170,7 +171,7 @@ struct CPU_State {
     uint32_t rob_tail; // ROB尾指针（分配）
     uint32_t rob_size; // 当前ROB中指令数量
 
-    // 分支预测器（简单的全局历史）
+    // 分支预测器
     bool branch_predictor; // 简单预测器：上次分支结果
 
     // 流水线状态

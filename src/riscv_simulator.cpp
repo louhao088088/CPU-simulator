@@ -1,15 +1,14 @@
-#include "riscv_simulator.h"
+#include "../include/riscv_simulator.h"
 
-#include "instruction.h"
+#include "../include/instruction.h"
 
 #include <iostream>
 #include <string>
 
 extern int cnt;
 
-RISCV_Simulator::RISCV_Simulator(bool enable_ooo)
-    : is_halted(false), use_ooo_execution(enable_ooo) {
-    if (use_ooo_execution) {
+RISCV_Simulator::RISCV_Simulator(bool flag) : is_halted(false), chaos_order(flag) {
+    if (chaos_order) {
         processor = new Processor();
     } else {
         processor = nullptr;
@@ -49,15 +48,12 @@ void RISCV_Simulator::run() {
 }
 
 void RISCV_Simulator::tick() {
-    if (use_ooo_execution && processor) {
-        // 使用乱序执行处理器
-        // ！！！！注意：这几个阶段的执行顺序在模拟中很重要！！！！
-        // 我们通常以后端到前端的倒序来模拟，防止一条指令在一个周期内穿越多个阶段
+    if (chaos_order && processor) {
+
         processor->tick(cpu);
 
-        // 检查停机条件
         if (cpu.rob_size == 0 && cpu.fetch_stalled) {
-            // 检查是否遇到HALT指令
+
             if (cpu.pc < MEMORY_SIZE - 3) {
                 uint32_t next_instruction = cpu.memory[cpu.pc] | (cpu.memory[cpu.pc + 1] << 8) |
                                             (cpu.memory[cpu.pc + 2] << 16) |
@@ -66,11 +62,14 @@ void RISCV_Simulator::tick() {
                     is_halted = true;
                 }
             } else {
-                is_halted = true; // PC超出范围
+                is_halted = true;
             }
         }
-    } else {
-        // 使用原有的顺序执行
+    }
+
+    /*else {
+        is_halted = true;
+        return;
         uint32_t instruction = fetch_instruction();
 
         if (instruction == HALT_INSTRUCTION) {
@@ -84,7 +83,7 @@ void RISCV_Simulator::tick() {
 
         cpu.pc = next_pc;
         cpu.arf.regs[0] = 0;
-    }
+    }*/
 }
 
 uint32_t RISCV_Simulator::fetch_instruction() {

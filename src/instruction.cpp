@@ -1,4 +1,4 @@
-#include "instruction.h"
+#include "../include/instruction.h"
 
 #include <iostream>
 
@@ -35,7 +35,7 @@ ITypeInstruction InstructionProcessor::parse_i_type(uint32_t instruction, CPU_St
     inst.rd_index = (instruction >> 7) & 0x1F;
     inst.funct3 = (instruction >> 12) & 0x7;
     inst.rs1_index = (instruction >> 15) & 0x1F;
-    inst.value1 = cpu.arf.regs[inst.rs1_index]; // 直接读取寄存器值
+    inst.value1 = cpu.arf.regs[inst.rs1_index];
     inst.imm = static_cast<int32_t>(instruction) >> 20;
     return inst;
 }
@@ -272,9 +272,9 @@ void InstructionProcessor::execute_load(CPU_State &cpu, const ITypeInstruction &
         }
         if (inst.rd_index != 0)
             cpu.arf.regs[inst.rd_index] = static_cast<uint32_t>(cpu.memory[address]) |
-                                      (static_cast<uint32_t>(cpu.memory[address + 1]) << 8) |
-                                      (static_cast<uint32_t>(cpu.memory[address + 2]) << 16) |
-                                      (static_cast<uint32_t>(cpu.memory[address + 3]) << 24);
+                                          (static_cast<uint32_t>(cpu.memory[address + 1]) << 8) |
+                                          (static_cast<uint32_t>(cpu.memory[address + 2]) << 16) |
+                                          (static_cast<uint32_t>(cpu.memory[address + 3]) << 24);
         break;
     }
     case 0b100: { // lbu
@@ -303,7 +303,7 @@ void InstructionProcessor::execute_load(CPU_State &cpu, const ITypeInstruction &
         }
         if (inst.rd_index != 0)
             cpu.arf.regs[inst.rd_index] = static_cast<uint32_t>(cpu.memory[address]) |
-                                      (static_cast<uint32_t>(cpu.memory[address + 1]) << 8);
+                                          (static_cast<uint32_t>(cpu.memory[address + 1]) << 8);
         break;
     }
     default:

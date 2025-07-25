@@ -5,13 +5,14 @@
 ## 项目结构
 
 ```
-├── include/              # 头文件
+├── include/             # 头文件
 │   ├── cpu_state.h      # CPU状态定义
 │   ├── instruction.h    # 指令处理
 │   └── riscv_simulator.h# 模拟器主类
 ├── src/                 # 源代码
-│   ├── cpu_state.cpp
+│   ├── cpu_state.cpp 
 │   ├── instruction.cpp
+|   ├── processor.cpp    # 乱序执行
 │   └── riscv_simulator.cpp
 ├── main.cpp             # 程序入口
 ├── sample/              # 样本测试数据

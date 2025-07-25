@@ -101,6 +101,18 @@ class Processor {
     void execute_branch_instruction(CPU_State &cpu, RSEntry &rs, ROBEntry &rob);
     uint32_t calculate_memory_address(const RSEntry &rs);
 
+    // 乱序分派和设置
+    void setup_rs_entry(CPU_State &cpu, RSEntry &rs, const ROBEntry &rob_entry, uint32_t rob_idx);
+    void setup_lsq_entry(CPU_State &cpu, LSQEntry &lsq, const ROBEntry &rob_entry,
+                         uint32_t rob_idx);
+
+    // 真正的乱序执行函数
+    uint32_t execute_alu_operation(const RSEntry &rs);
+    void execute_memory_operations(CPU_State &cpu);
+    void execute_load_with_dependencies(CPU_State &cpu, LSQEntry &lsq);
+    void execute_store_with_dependencies(CPU_State &cpu, LSQEntry &lsq);
+    uint32_t load_from_memory(CPU_State &cpu, const LSQEntry &lsq);
+
     // Load/Store处理
     void execute_load(CPU_State &cpu, LSQEntry &lsq, ROBEntry &rob);
     void execute_store(CPU_State &cpu, LSQEntry &lsq, ROBEntry &rob);
