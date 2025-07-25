@@ -10,15 +10,15 @@ extern int cnt;
 RISCV_Simulator::RISCV_Simulator(bool enable_ooo)
     : is_halted(false), use_ooo_execution(enable_ooo) {
     if (use_ooo_execution) {
-        ooo_processor = new OutOfOrderProcessor();
+        processor = new Processor();
     } else {
-        ooo_processor = nullptr;
+        processor = nullptr;
     }
 }
 
 RISCV_Simulator::~RISCV_Simulator() {
-    if (ooo_processor) {
-        delete ooo_processor;
+    if (processor) {
+        delete processor;
     }
 }
 
@@ -49,11 +49,11 @@ void RISCV_Simulator::run() {
 }
 
 void RISCV_Simulator::tick() {
-    if (use_ooo_execution && ooo_processor) {
+    if (use_ooo_execution && processor) {
         // 使用乱序执行处理器
         // ！！！！注意：这几个阶段的执行顺序在模拟中很重要！！！！
         // 我们通常以后端到前端的倒序来模拟，防止一条指令在一个周期内穿越多个阶段
-        ooo_processor->tick(cpu);
+        processor->tick(cpu);
 
         // 检查停机条件
         if (cpu.rob_size == 0 && cpu.fetch_stalled) {

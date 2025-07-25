@@ -11,7 +11,7 @@ include_directories(include)
 add_executable(code 
     src/cpu_state.cpp
     src/instruction.cpp
-    src/out_of_order_processor.cpp
+    src/processor.cpp
     src/riscv_simulator.cpp
     main.cpp
 )

@@ -97,9 +97,13 @@ struct ROBEntry {
     uint32_t target_pc;   // 跳转目标地址
     bool actual_taken;    // 实际是否跳转
 
+    // 源操作数信息（用于重命名阶段）
+    uint32_t rs1, rs2; // 源寄存器编号
+    uint32_t imm;      // 立即数
+
     ROBEntry()
-        : busy(false), ready(false), is_branch(false), predicted_taken(false), actual_taken(false) {
-    }
+        : busy(false), ready(false), is_branch(false), predicted_taken(false), actual_taken(false),
+          rs1(0), rs2(0), imm(0) {}
 };
 
 // 预约站条目
@@ -131,7 +135,12 @@ struct LSQEntry {
     bool value_ready;      // 值是否就绪（STORE用）
     uint32_t rob_idx;      // 在ROB中的位置（用于保序）
 
-    LSQEntry() : busy(false), address_ready(false), value_ready(false) {}
+    // 地址计算操作数
+    uint32_t base_value;   // 基址寄存器的值
+    uint32_t base_rob_idx; // 基址寄存器依赖的ROB索引（0表示就绪）
+    uint32_t offset;       // 偏移量
+
+    LSQEntry() : busy(false), address_ready(false), value_ready(false), base_rob_idx(0) {}
 };
 
 // 公共数据总线广播结果

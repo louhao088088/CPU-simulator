@@ -60,9 +60,9 @@ struct DecodedInstruction {
 };
 
 // 乱序执行处理器
-class OutOfOrderProcessor {
+class Processor {
   public:
-    OutOfOrderProcessor();
+    Processor();
 
     // 主要执行函数
     void tick(CPU_State &cpu);
@@ -106,6 +106,11 @@ class OutOfOrderProcessor {
     void execute_store(CPU_State &cpu, LSQEntry &lsq, ROBEntry &rob);
     bool check_store_to_load_forwarding(const CPU_State &cpu, uint32_t load_addr,
                                         uint32_t load_rob_idx, uint32_t &forwarded_value);
+
+    // 内存依赖检查 - 新增关键函数
+    bool check_memory_dependencies(const CPU_State &cpu, uint32_t load_address,
+                                   uint32_t load_rob_idx, uint32_t &forwarded_value);
+    bool can_load_proceed(const CPU_State &cpu, uint32_t load_address, uint32_t load_rob_idx);
 
     // 分支预测和处理
     bool predict_branch(CPU_State &cpu, uint32_t pc);
