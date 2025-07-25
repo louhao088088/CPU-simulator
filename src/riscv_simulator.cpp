@@ -7,7 +7,20 @@
 
 extern int cnt;
 
-RISCV_Simulator::RISCV_Simulator() : is_halted(false) {}
+RISCV_Simulator::RISCV_Simulator(bool enable_ooo)
+    : is_halted(false), use_ooo_execution(enable_ooo) {
+    if (use_ooo_execution) {
+        ooo_processor = new OutOfOrderProcessor();
+    } else {
+        ooo_processor = nullptr;
+    }
+}
+
+RISCV_Simulator::~RISCV_Simulator() {
+    if (ooo_processor) {
+        delete ooo_processor;
+    }
+}
 
 void RISCV_Simulator::load_program() {
     std::string line;
@@ -36,19 +49,42 @@ void RISCV_Simulator::run() {
 }
 
 void RISCV_Simulator::tick() {
-    uint32_t instruction = fetch_instruction();
+    if (use_ooo_execution && ooo_processor) {
+        // 使用乱序执行处理器
+        // ！！！！注意：这几个阶段的执行顺序在模拟中很重要！！！！
+        // 我们通常以后端到前端的倒序来模拟，防止一条指令在一个周期内穿越多个阶段
+        ooo_processor->tick(cpu);
 
-    if (instruction == HALT_INSTRUCTION) {
-        is_halted = true;
-        return;
+        // 检查停机条件
+        if (cpu.rob_size == 0 && cpu.fetch_stalled) {
+            // 检查是否遇到HALT指令
+            if (cpu.pc < MEMORY_SIZE - 3) {
+                uint32_t next_instruction = cpu.memory[cpu.pc] | (cpu.memory[cpu.pc + 1] << 8) |
+                                            (cpu.memory[cpu.pc + 2] << 16) |
+                                            (cpu.memory[cpu.pc + 3] << 24);
+                if (next_instruction == HALT_INSTRUCTION) {
+                    is_halted = true;
+                }
+            } else {
+                is_halted = true; // PC超出范围
+            }
+        }
+    } else {
+        // 使用原有的顺序执行
+        uint32_t instruction = fetch_instruction();
+
+        if (instruction == HALT_INSTRUCTION) {
+            is_halted = true;
+            return;
+        }
+
+        uint32_t next_pc = cpu.pc + 4;
+
+        InstructionProcessor::decode_and_execute(cpu, instruction, next_pc, is_halted);
+
+        cpu.pc = next_pc;
+        cpu.arf.regs[0] = 0;
     }
-
-    uint32_t next_pc = cpu.pc + 4;
-
-    InstructionProcessor::decode_and_execute(cpu, instruction, next_pc, is_halted);
-
-    cpu.pc = next_pc;
-    cpu.regs[0] = 0;
 }
 
 uint32_t RISCV_Simulator::fetch_instruction() {
@@ -67,6 +103,6 @@ uint32_t RISCV_Simulator::fetch_instruction() {
 }
 
 void RISCV_Simulator::print_result() {
-    uint32_t result = cpu.regs[10] & 0xFF;
+    uint32_t result = cpu.arf.regs[10] & 0xFF;
     std::cout << result << std::endl;
 }

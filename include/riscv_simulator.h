@@ -3,13 +3,18 @@
 
 #include "cpu_state.h"
 
+class OutOfOrderProcessor; // 前向声明
+
 class RISCV_Simulator {
   private:
     CPU_State cpu;
     bool is_halted;
+    bool use_ooo_execution;
+    OutOfOrderProcessor *ooo_processor;
 
   public:
-    RISCV_Simulator();
+    RISCV_Simulator(bool enable_ooo = false);
+    ~RISCV_Simulator();
 
     // Load program from stdin
     void load_program();

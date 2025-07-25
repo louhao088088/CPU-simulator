@@ -32,6 +32,12 @@
 
 - **原始版本**: `simpleCPU.cpp` 单文件实现单流水 CPU
 
+## 实现功能
+
+六阶段流水线: fetch → decode/rename → dispatch → execute → writeback → commit
+
+辅助功能: 结果广播、分支预测错误处理、Store-to-Load 转发
+
 ## 注意事项
 
 - 程序会在遇到 `0x0ff00513` 指令时停止执行
