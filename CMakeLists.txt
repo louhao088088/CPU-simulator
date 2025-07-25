@@ -4,14 +4,15 @@ project(CPU-Simulator)
 set(CMAKE_CXX_STANDARD 20)
 
 add_compile_options(-Wall)
-add_compile_options(-Ofast)
+add_compile_options(-O2)
+add_compile_options(-g)
 
 include_directories(include)
 
 add_executable(code 
     src/cpu_state.cpp
     src/instruction.cpp
-    src/processor.cpp
+    src/process.cpp
     src/riscv_simulator.cpp
     main.cpp
 )

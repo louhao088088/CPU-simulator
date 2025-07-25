@@ -1,25 +1,16 @@
 #include "../include/riscv_simulator.h"
 
 #include "../include/instruction.h"
+#include "../include/process.h"
 
 #include <iostream>
 #include <string>
 
 extern int cnt;
 
-RISCV_Simulator::RISCV_Simulator(bool flag) : is_halted(false), chaos_order(flag) {
-    if (chaos_order) {
-        processor = new Processor();
-    } else {
-        processor = nullptr;
-    }
-}
+RISCV_Simulator::RISCV_Simulator() : is_halted(false) { cpu_core = new CPUCore(); }
 
-RISCV_Simulator::~RISCV_Simulator() {
-    if (processor) {
-        delete processor;
-    }
-}
+RISCV_Simulator::~RISCV_Simulator() { delete cpu_core; }
 
 void RISCV_Simulator::load_program() {
     std::string line;
@@ -41,49 +32,36 @@ void RISCV_Simulator::load_program() {
 }
 
 void RISCV_Simulator::run() {
-    while (!is_halted) {
+    int max_cycles = 10;
+    int cycle_count = 0;
+
+    while (!is_halted && cycle_count < max_cycles) {
         tick();
+        cycle_count++;
+        cerr << "Cycle: " << cycle_count << std::endl;
     }
+
+    if (cycle_count >= max_cycles) {
+        std::cerr << "Warning: Simulation terminated due to cycle limit" << std::endl;
+    }
+
     print_result();
 }
 
 void RISCV_Simulator::tick() {
-    if (chaos_order && processor) {
+    cpu_core->tick(cpu);
 
-        processor->tick(cpu);
-
-        if (cpu.rob_size == 0 && cpu.fetch_stalled) {
-
-            if (cpu.pc < MEMORY_SIZE - 3) {
-                uint32_t next_instruction = cpu.memory[cpu.pc] | (cpu.memory[cpu.pc + 1] << 8) |
-                                            (cpu.memory[cpu.pc + 2] << 16) |
-                                            (cpu.memory[cpu.pc + 3] << 24);
-                if (next_instruction == HALT_INSTRUCTION) {
-                    is_halted = true;
-                }
-            } else {
-                is_halted = true;
-            }
-        }
-    }
-
-    /*else {
+    // 检查是否所有指令都完成了
+    if (cpu.rob_size == 0 && cpu.fetch_stalled) {
         is_halted = true;
         return;
-        uint32_t instruction = fetch_instruction();
+    }
 
-        if (instruction == HALT_INSTRUCTION) {
-            is_halted = true;
-            return;
-        }
-
-        uint32_t next_pc = cpu.pc + 4;
-
-        InstructionProcessor::decode_and_execute(cpu, instruction, next_pc, is_halted);
-
-        cpu.pc = next_pc;
-        cpu.arf.regs[0] = 0;
-    }*/
+    // 如果PC超出范围，也停止模拟
+    if (cpu.pc >= MEMORY_SIZE - 3) {
+        is_halted = true;
+        return;
+    }
 }
 
 uint32_t RISCV_Simulator::fetch_instruction() {
@@ -104,4 +82,11 @@ uint32_t RISCV_Simulator::fetch_instruction() {
 void RISCV_Simulator::print_result() {
     uint32_t result = cpu.arf.regs[10] & 0xFF;
     std::cout << result << std::endl;
+
+    // 添加调试信息
+    std::cerr << "Cycles: " << cpu_core->get_cycle_count() << std::endl;
+    std::cerr << "Instructions: " << cpu_core->get_instruction_count() << std::endl;
+    std::cerr << "Branch mispredictions: " << cpu_core->get_branch_mispredictions() << std::endl;
+    std::cerr << "Final PC: " << std::hex << cpu.pc << std::dec << std::endl;
+    std::cerr << "Register a0 (x10): " << cpu.arf.regs[10] << std::endl;
 }

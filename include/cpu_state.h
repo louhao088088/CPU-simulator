@@ -11,8 +11,8 @@ const uint32_t HALT_INSTRUCTION = 0x0ff00513;
 const int ROB_SIZE = 32;
 const int RS_SIZE = 16;
 const int LSQ_SIZE = 16;
+const int FETCH_BUFFER_SIZE = 4;
 
-// 指令类型枚举
 enum class InstrType {
     ALU_ADD,
     ALU_SUB,
@@ -54,6 +54,15 @@ enum class InstrType {
     HALT
 };
 
+// 取指缓存条目
+struct FetchBufferEntry {
+    bool valid;           // 条目是否有效
+    uint32_t instruction; // 指令内容
+    uint32_t pc;          // 指令地址
+
+    FetchBufferEntry() : valid(false), instruction(0), pc(0) {}
+};
+
 // 指令状态枚举
 enum class InstrState {
     Dispatch,  // 已分派到预约站
@@ -62,7 +71,7 @@ enum class InstrState {
     Commit     // 可以提交
 };
 
-// 寄存器别名表条目
+// 寄存器别名表
 struct RATEntry {
     bool busy;        // 是否被某个在执行的指令预定
     uint32_t rob_idx; // 预定它的指令的ROB索引
@@ -70,7 +79,7 @@ struct RATEntry {
     RATEntry() : busy(false), rob_idx(0) {}
 };
 
-// 架构寄存器文件
+// 架构寄存器
 struct ArchRegisterFile {
     uint32_t regs[32];
 
@@ -81,7 +90,7 @@ struct ArchRegisterFile {
     }
 };
 
-// 重排序缓冲区条目
+// 重排序缓冲区
 struct ROBEntry {
     bool busy;            // 是否被占用
     InstrType instr_type; // 指令类型
@@ -107,7 +116,7 @@ struct ROBEntry {
           rs1(0), rs2(0), imm(0) {}
 };
 
-// 预约站条目
+// 预约站
 struct RSEntry {
     bool busy;             // 是否被占用
     InstrType op;          // 操作类型
@@ -116,7 +125,7 @@ struct RSEntry {
     uint32_t dest_rob_idx; // 对应的ROB条目索引
     uint32_t imm;          // 立即数
 
-    // 执行计时器(内存操作可能要三周期)
+    // 执行计时器
     int execution_cycles_left;
 
     RSEntry() : busy(false), Qj(0), Qk(0), execution_cycles_left(0) {}
@@ -125,7 +134,7 @@ struct RSEntry {
     bool operands_ready() const { return Qj == 0 && Qk == 0; }
 };
 
-// Load/Store队列条目
+// Load/Store队列
 struct LSQEntry {
     bool busy;             // 是否被占用
     InstrType op;          // LOAD或STORE类型
@@ -159,20 +168,27 @@ struct CPU_State {
     ArchRegisterFile arf;        // 架构寄存器文件
     uint8_t memory[MEMORY_SIZE]; // 内存
 
-    // 乱序执行相关结构
+    // 取指缓存队列
+
+    FetchBufferEntry fetch_buffer[FETCH_BUFFER_SIZE]; // 指令缓存队列
+    int fetch_buffer_head;                          
+    int fetch_buffer_tail;                            
+    int fetch_buffer_size;                            
+
+    // 乱序执行
     RATEntry rat[32];               // 寄存器别名表
     ROBEntry rob[ROB_SIZE];         // 重排序缓冲区
     RSEntry rs_alu[RS_SIZE];        // ALU预约站
     RSEntry rs_branch[RS_SIZE / 2]; // 分支预约站
     LSQEntry lsq[LSQ_SIZE];         // Load/Store队列
 
-    // ROB管理指针
-    uint32_t rob_head; // ROB头指针（提交）
-    uint32_t rob_tail; // ROB尾指针（分配）
-    uint32_t rob_size; // 当前ROB中指令数量
+    // ROB
+    uint32_t rob_head; 
+    uint32_t rob_tail; 
+    uint32_t rob_size; 
 
     // 分支预测器
-    bool branch_predictor; // 简单预测器：上次分支结果
+    bool branch_predictor; 
 
     // 流水线状态
     bool fetch_stalled;    // 取指是否停滞

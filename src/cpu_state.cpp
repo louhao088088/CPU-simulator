@@ -2,11 +2,15 @@
 
 CPU_State::CPU_State()
     : pc(0), rob_head(0), rob_tail(0), rob_size(0), branch_predictor(false), fetch_stalled(false),
-      pipeline_flushed(false) {
+      pipeline_flushed(false), fetch_buffer_head(0), fetch_buffer_tail(0), fetch_buffer_size(0) {
     for (int i = 0; i < MEMORY_SIZE; ++i) {
         memory[i] = 0;
     }
 
+    // 初始化取指缓存
+    for (int i = 0; i < FETCH_BUFFER_SIZE; ++i) {
+        fetch_buffer[i] = FetchBufferEntry();
+    }
 
     // 初始化寄存器别名表
     for (int i = 0; i < 32; ++i) {

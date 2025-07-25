@@ -3,17 +3,16 @@
 
 #include "cpu_state.h"
 
-class Processor;
+class CPUCore;
 
 class RISCV_Simulator {
   private:
     CPU_State cpu;
     bool is_halted;
-    bool chaos_order;
-    Processor *processor;
+    CPUCore *cpu_core;
 
   public:
-    RISCV_Simulator(bool chaos_order = false);
+    RISCV_Simulator();
     ~RISCV_Simulator();
 
     void load_program();
@@ -21,9 +20,7 @@ class RISCV_Simulator {
 
   private:
     void tick();
-
     uint32_t fetch_instruction();
-
     void print_result();
 };
 
