@@ -32,7 +32,7 @@ void RISCV_Simulator::load_program() {
 }
 
 void RISCV_Simulator::run() {
-    int max_cycles = 10;
+    int max_cycles = 20000;
     int cycle_count = 0;
 
     while (!is_halted && cycle_count < max_cycles) {
@@ -52,7 +52,7 @@ void RISCV_Simulator::tick() {
     cpu_core->tick(cpu);
 
     // 检查是否所有指令都完成了
-    if (cpu.rob_size == 0 && cpu.fetch_stalled) {
+    if (cpu.fetch_stalled) {
         is_halted = true;
         return;
     }

@@ -31,7 +31,90 @@ CPU_State::CPU_State()
     }
 
     // 初始化Load/Store队列
-    for (int i = 0; i < LSQ_SIZE; ++i) {
-        lsq[i] = LSQEntry();
+    for (int i = 0; i < LSB_SIZE; ++i) {
+        LSB[i] = LSBEntry();
+    }
+}
+
+std::string Type_string(InstrType type) {
+    switch (type) {
+    case InstrType::ALU_ADD:
+        return "ALU_ADD";
+    case InstrType::ALU_SUB:
+        return "ALU_SUB";
+    case InstrType::ALU_AND:
+        return "ALU_AND";
+    case InstrType::ALU_OR:
+        return "ALU_OR";
+    case InstrType::ALU_XOR:
+        return "ALU_XOR";
+    case InstrType::ALU_SLL:
+        return "ALU_SLL";
+    case InstrType::ALU_SRL:
+        return "ALU_SRL";
+    case InstrType::ALU_SRA:
+        return "ALU_SRA";
+    case InstrType::ALU_SLT:
+        return "ALU_SLT";
+    case InstrType::ALU_SLTU:
+        return "ALU_SLTU";
+    case InstrType::ALU_ADDI:
+        return "ALU_ADDI";
+    case InstrType::ALU_ANDI:
+        return "ALU_ANDI";
+    case InstrType::ALU_ORI:
+        return "ALU_ORI";
+    case InstrType::ALU_XORI:
+        return "ALU_XORI";
+    case InstrType::ALU_SLLI:
+        return "ALU_SLLI";
+    case InstrType::ALU_SRLI:
+        return "ALU_SRLI";
+    case InstrType::ALU_SRAI:
+        return "ALU_SRAI";
+    case InstrType::ALU_SLTI:
+        return "ALU_SLTI";
+    case InstrType::ALU_SLTIU:
+        return "ALU_SLTIU";
+    case InstrType::LOAD_LB:
+        return "LOAD_LB";
+    case InstrType::LOAD_LH:
+        return "LOAD_LH";
+    case InstrType::LOAD_LW:
+        return "LOAD_LW";
+    case InstrType::LOAD_LBU:
+        return "LOAD_LBU";
+    case InstrType::LOAD_LHU:
+        return "LOAD_LHU";
+    case InstrType::STORE_SB:
+        return "STORE_SB";
+    case InstrType::STORE_SH:
+        return "STORE_SH";
+    case InstrType::STORE_SW:
+        return "STORE_SW";
+    case InstrType::BRANCH_BEQ:
+        return "BRANCH_BEQ";
+    case InstrType::BRANCH_BNE:
+        return "BRANCH_BNE";
+    case InstrType::BRANCH_BLT:
+        return "BRANCH_BLT";
+    case InstrType::BRANCH_BGE:
+        return "BRANCH_BGE";
+    case InstrType::BRANCH_BLTU:
+        return "BRANCH_BLTU";
+    case InstrType::BRANCH_BGEU:
+        return "BRANCH_BGEU";
+    case InstrType::JUMP_JAL:
+        return "JUMP_JAL";
+    case InstrType::JUMP_JALR:
+        return "JUMP_JALR";
+    case InstrType::LUI:
+        return "LUI";
+    case InstrType::AUIPC:
+        return "AUIPC";
+    case InstrType::HALT:
+        return "HALT";
+    default:
+        return "UNKNOWN";
     }
 }

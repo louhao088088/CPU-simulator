@@ -19,8 +19,6 @@ class CPUCore {
     uint64_t get_branch_mispredictions() const { return branch_mispredictions_; }
 
   private:
-    
-
     void commit_stage(CPU_State &cpu);
     void writeback_stage(CPU_State &cpu);
     void execute_stage(CPU_State &cpu);
@@ -39,13 +37,13 @@ class CPUCore {
     uint32_t allocate_rs_entry(CPU_State &cpu, InstrType type);
     void free_rs_entry(CPU_State &cpu, uint32_t rs_idx, InstrType type);
 
-    // LSQ管理
-    bool lsq_available(const CPU_State &cpu) const;
-    uint32_t allocate_lsq_entry(CPU_State &cpu);
-    void free_lsq_entry(CPU_State &cpu, uint32_t lsq_idx);
+    // LSB管理
+    bool LSB_available(const CPU_State &cpu) const;
+    uint32_t allocate_LSB_entry(CPU_State &cpu);
+    void free_LSB_entry(CPU_State &cpu, uint32_t LSB_idx);
 
     // 寄存器重命名
-    void rename_registers(CPU_State &cpu, const Instruction &instr, uint32_t rob_idx);
+    void rename_registers(CPU_State &cpu, const ROBEntry &rob_entry, uint32_t rob_idx);
     uint32_t read_operand(const CPU_State &cpu, uint32_t reg_idx, uint32_t &rob_dependency);
 
     // CDB广播
@@ -65,5 +63,5 @@ class CPUCore {
     uint64_t instruction_count_;
     uint64_t branch_mispredictions_; // 分支预测错误计数
 };
- 
+
 #endif // CPU_CORE_H
