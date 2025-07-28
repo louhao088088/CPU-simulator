@@ -50,6 +50,8 @@ class CPUCore {
     void broadcast_result(CPU_State &cpu, uint32_t rob_idx, uint32_t value);
 
     // 内存依赖检查
+    bool is_earlier_instruction(const CPU_State &cpu, uint32_t rob_idx1, uint32_t rob_idx2);
+
     bool check_load_dependencies(const CPU_State &cpu, uint32_t load_addr, uint32_t load_rob_idx,
                                  uint32_t &forwarded_value);
 

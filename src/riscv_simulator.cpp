@@ -32,17 +32,17 @@ void RISCV_Simulator::load_program() {
 }
 
 void RISCV_Simulator::run() {
-    int max_cycles = 20000;
+    int max_cycles = 50000;
     int cycle_count = 0;
 
     while (!is_halted && cycle_count < max_cycles) {
         tick();
         cycle_count++;
-        cerr << "Cycle: " << cycle_count << std::endl;
+        cout << "Cycle: " << cycle_count << std::endl;
     }
 
     if (cycle_count >= max_cycles) {
-        std::cerr << "Warning: Simulation terminated due to cycle limit" << std::endl;
+        std::cout << "Warning: Simulation terminated due to cycle limit" << std::endl;
     }
 
     print_result();
@@ -51,6 +51,10 @@ void RISCV_Simulator::run() {
 void RISCV_Simulator::tick() {
     cpu_core->tick(cpu);
 
+    for (int i = 0; i < 32; i++) {
+        cout << std::dec << cpu.arf.regs[i] << " ";
+    }
+    cout << std::endl;
     // 检查是否所有指令都完成了
     if (cpu.fetch_stalled) {
         is_halted = true;
@@ -66,7 +70,7 @@ void RISCV_Simulator::tick() {
 
 uint32_t RISCV_Simulator::fetch_instruction() {
     if (cpu.pc >= MEMORY_SIZE - 3) {
-        std::cerr << "Error: Program Counter out of bounds!" << std::endl;
+        std::cout << "Error: Program Counter out of bounds!" << std::endl;
         is_halted = true;
         return 0;
     }
@@ -84,9 +88,9 @@ void RISCV_Simulator::print_result() {
     std::cout << result << std::endl;
 
     // 添加调试信息
-    std::cerr << "Cycles: " << cpu_core->get_cycle_count() << std::endl;
-    std::cerr << "Instructions: " << cpu_core->get_instruction_count() << std::endl;
-    std::cerr << "Branch mispredictions: " << cpu_core->get_branch_mispredictions() << std::endl;
-    std::cerr << "Final PC: " << std::hex << cpu.pc << std::dec << std::endl;
-    std::cerr << "Register a0 (x10): " << cpu.arf.regs[10] << std::endl;
+    std::cout << "Cycles: " << cpu_core->get_cycle_count() << std::endl;
+    std::cout << "Instructions: " << cpu_core->get_instruction_count() << std::endl;
+    std::cout << "Branch mispredictions: " << cpu_core->get_branch_mispredictions() << std::endl;
+    std::cout << "Final PC: " << std::hex << cpu.pc << std::dec << std::endl;
+    std::cout << "Register a0 (x10): " << cpu.arf.regs[10] << std::endl;
 }

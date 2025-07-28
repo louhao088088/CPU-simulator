@@ -19,15 +19,15 @@ void CPUCore::tick(CPU_State &cpu) {
 void CPUCore::fetch_stage(CPU_State &cpu) {
     // 如果ROB满了或取指被阻塞，则停止取指
 
-    cout << "Fetch stage: PC = " << cpu.pc << " " << cpu.rob_size << " " << cpu.fetch_stalled
-         << std::endl;
+    cout << "Fetch stage: PC = " << std::hex << cpu.pc << " " << cpu.rob_size << " "
+         << cpu.fetch_stalled << std::endl;
     if (rob_full(cpu) || cpu.fetch_stalled) {
         return;
     }
 
     // 如果取指缓存满了，则等待
 
-    if (cpu.fetch_buffer_size >= FETCH_BUFFER_SIZE) {
+    if (cpu.fetch_buffer_size >= FETCH_BUFFER_SIZE - 1) {
         return;
     }
 
@@ -77,8 +77,6 @@ void CPUCore::decode_rename_stage(CPU_State &cpu) {
     // 解码指令
     Instruction instr = InstructionProcessor::decode(fetch_entry.instruction, fetch_entry.pc);
 
-    cerr << "Decoded instruction: " << std::hex << instr.raw
-         << " at PC: " << Type_string(instr.type) << std::dec << std::endl;
     // 检查是否有可用的预约站
     if (InstructionProcessor::is_alu_type(instr.type) ||
         InstructionProcessor::is_branch_type(instr.type)) {
@@ -88,10 +86,13 @@ void CPUCore::decode_rename_stage(CPU_State &cpu) {
     } else if (InstructionProcessor::is_load_type(instr.type) ||
                InstructionProcessor::is_store_type(instr.type)) {
         if (!LSB_available(cpu)) {
+            cout << "AAA";
             return; // LSB满，等待
         }
     }
-
+    cout << "Decoded instruction: " << std::hex << instr.raw << " at PC: " << instr.pc << " "
+         << Type_string(instr.type) << std::dec << " " << instr.rs1 << " " << instr.rs2 << " "
+         << instr.rd << std::endl;
     // 分配ROB条目
     uint32_t rob_idx = allocate_rob_entry(cpu);
 
@@ -105,6 +106,9 @@ void CPUCore::decode_rename_stage(CPU_State &cpu) {
     rob_entry.rs1 = instr.rs1;
     rob_entry.rs2 = instr.rs2;
     rob_entry.imm = instr.imm;
+    cout << "Decoded instruction: " << std::hex << " at PC: " << instr.pc << " "
+         << Type_string(instr.type) << std::dec << " " << rob_entry.busy << " " << rob_idx
+         << std::endl;
 
     // 处理分支指令
     if (InstructionProcessor::is_branch_type(instr.type)) {
@@ -128,7 +132,6 @@ void CPUCore::dispatch_stage(CPU_State &cpu) {
         if (!rob_entry.busy || rob_entry.state != InstrState::Dispatch) {
             continue;
         }
-
         if (InstructionProcessor::is_alu_type(rob_entry.instr_type) ||
             InstructionProcessor::is_branch_type(rob_entry.instr_type)) {
 
@@ -160,9 +163,9 @@ void CPUCore::dispatch_stage(CPU_State &cpu) {
             } else {
 
                 rs_entry.Vk = 0;
-                rs_entry.Qk = 0;
+                rs_entry.Qk = ROB_SIZE;
             }
-
+            // cout << "RENAME:" << Type_string(rob_entry.instr_type)<<;
             rename_registers(cpu, rob_entry, i);
             rob_entry.state = InstrState::Execute;
         }
@@ -173,25 +176,34 @@ void CPUCore::dispatch_stage(CPU_State &cpu) {
             if (!LSB_available(cpu)) {
                 continue;
             }
-
+            cout << "DISPATCH LSB pc"
+                 << " " << std::hex << " " << rob_entry.pc << " "
+                 << Type_string(rob_entry.instr_type) << std::dec << std::endl;
             uint32_t LSB_idx = allocate_LSB_entry(cpu);
             LSBEntry &LSB_entry = cpu.LSB[LSB_idx];
+
             LSB_entry.busy = true;
             LSB_entry.op = rob_entry.instr_type;
             LSB_entry.dest_rob_idx = i;
             LSB_entry.rob_idx = i;
             LSB_entry.offset = rob_entry.imm;
+            LSB_entry.execute_completed = 0;
+            LSB_entry.execution_cycles_left = 0;
 
             LSB_entry.base_value = read_operand(cpu, rob_entry.rs1, LSB_entry.base_rob_idx);
-            LSB_entry.address_ready = (LSB_entry.base_rob_idx == 0);
+            LSB_entry.address_ready = (LSB_entry.base_rob_idx == ROB_SIZE);
+            if (LSB_entry.address_ready)
+                LSB_entry.address = LSB_entry.base_value + LSB_entry.offset;
+            // cout << "ADDRESS"
+            //       << " " << LSB_entry.base_value << " " << LSB_entry.base_rob_idx << std::endl;
 
             // Store指令还需要读取要存储的值
             if (InstructionProcessor::is_store_type(rob_entry.instr_type)) {
                 LSB_entry.value = read_operand(cpu, rob_entry.rs2, LSB_entry.value_rob_idx);
-                LSB_entry.value_ready = (LSB_entry.value_rob_idx == 0);
+                LSB_entry.value_ready = (LSB_entry.value_rob_idx == ROB_SIZE);
             } else {
                 LSB_entry.value_ready = true;
-                LSB_entry.value_rob_idx = 0;
+                LSB_entry.value_rob_idx = ROB_SIZE;
             }
 
             if (InstructionProcessor::is_load_type(rob_entry.instr_type)) {
@@ -223,11 +235,11 @@ void CPUCore::dispatch_stage(CPU_State &cpu) {
                 rs_entry.Vj = read_operand(cpu, rob_entry.rs1, rs_entry.Qj);
             } else {
                 rs_entry.Vj = 0;
-                rs_entry.Qj = 0;
+                rs_entry.Qj = ROB_SIZE;
             }
 
             rs_entry.Vk = 0;
-            rs_entry.Qk = 0;
+            rs_entry.Qk = ROB_SIZE;
 
             rename_registers(cpu, rob_entry, i);
             rob_entry.state = InstrState::Execute;
@@ -241,10 +253,13 @@ void CPUCore::dispatch_stage(CPU_State &cpu) {
 
 void CPUCore::execute_stage(CPU_State &cpu) {
 
-    for (uint32_t i = 0; i < RS_SIZE; ++i) {
+    uint32_t alu_units_used = 0;
+    uint32_t load_units_used = 0;
+
+    for (uint32_t i = 0; i < RS_SIZE && alu_units_used < MAX_ALU_UNITS; ++i) {
         RSEntry &rs_entry = cpu.rs_alu[i];
         if (rs_entry.busy)
-            cerr << "Executing instruction: " << std::hex << cpu.rs_alu[i].Qj << " "
+            cout << "Executing instruction: " << std::hex << cpu.rs_alu[i].Qj << " "
                  << cpu.rs_alu[i].Qk << " " << Type_string(rs_entry.op) << std::dec << std::endl;
         if (!rs_entry.busy || !rs_entry.operands_ready()) {
             continue;
@@ -253,6 +268,7 @@ void CPUCore::execute_stage(CPU_State &cpu) {
         if (rs_entry.execution_cycles_left == 0) {
             rs_entry.execution_cycles_left =
                 InstructionProcessor::get_execution_cycles(rs_entry.op);
+            alu_units_used++;
         }
 
         rs_entry.execution_cycles_left--;
@@ -261,7 +277,7 @@ void CPUCore::execute_stage(CPU_State &cpu) {
             uint32_t result = 0;
             ROBEntry &rob_entry = cpu.rob[rs_entry.dest_rob_idx];
 
-            cerr << "Executing instruction: " << std::hex << Type_string(rob_entry.instr_type)
+            cout << "Executing instruction: " << std::hex << Type_string(rob_entry.instr_type)
                  << " at PC: " << rob_entry.pc << std::dec << std::endl;
 
             if (InstructionProcessor::is_alu_type(rs_entry.op) || rs_entry.op == InstrType::LUI ||
@@ -272,7 +288,6 @@ void CPUCore::execute_stage(CPU_State &cpu) {
                 if (rs_entry.op == InstrType::AUIPC || rs_entry.op == InstrType::JUMP_JAL ||
                     rs_entry.op == InstrType::JUMP_JALR) {
 
-                    // JAL和JALR指令的结果是返回地址（PC+4），不是目标地址
                     if (rs_entry.op == InstrType::JUMP_JAL || rs_entry.op == InstrType::JUMP_JALR) {
                         result = rob_entry.pc + 4; // 返回地址写入rd寄存器
 
@@ -284,7 +299,6 @@ void CPUCore::execute_stage(CPU_State &cpu) {
                         }
                         rob_entry.is_branch = true;
                     } else if (rs_entry.op == InstrType::AUIPC) {
-                        // AUIPC的结果是PC + immediate
                         result = rob_entry.pc + rs_entry.imm;
                     }
                 } else {
@@ -292,40 +306,40 @@ void CPUCore::execute_stage(CPU_State &cpu) {
                                                                rs_entry.Vk, rs_entry.imm);
                 }
             } else if (InstructionProcessor::is_branch_type(rs_entry.op)) {
-                // 分支指令：只计算条件和目标地址，不立即处理预测错误
+
                 bool taken = InstructionProcessor::check_branch_condition(rs_entry.op, rs_entry.Vj,
                                                                           rs_entry.Vk);
                 rob_entry.actual_taken = taken;
 
-                // 计算实际目标地址
                 if (taken) {
                     rob_entry.target_pc = rob_entry.pc + rob_entry.imm;
                 } else {
                     rob_entry.target_pc = rob_entry.pc + 4;
                 }
 
-                result = taken ? 1 : 0; // 只是为了标记执行完成
+                result = taken ? 1 : 0;
             }
 
-            // 统一广播结果到ROB
-            broadcast_result(cpu, rs_entry.dest_rob_idx, result);
+            rob_entry.value = result;
+            rob_entry.state = InstrState::Writeback;
 
-            // 释放预约站
             rs_entry.busy = false;
         }
     }
 
-    // 执行LSB中的Load/Store指令
-    for (uint32_t i = 0; i < LSB_SIZE; ++i) {
+    for (uint32_t i = 0; i < LSB_SIZE && load_units_used < MAX_LOAD_UNITS; ++i) {
         LSBEntry &LSB_entry = cpu.LSB[i];
         if (!LSB_entry.busy) {
             continue;
         }
-
-        // 计算地址（对Load和Store都需要）
+        /*cout << "Hello Executing LSB instruction: " << std::hex << Type_string(LSB_entry.op)
+             << " at address: " << std::dec << LSB_entry.address << std::dec << " "
+             << LSB_entry.address_ready << " " << LSB_entry.execute_completed << std::endl;
+        */
         if (!LSB_entry.address_ready) {
-            if (LSB_entry.base_rob_idx == 0) { // 基址就绪
+            if (LSB_entry.base_rob_idx == ROB_SIZE) {
                 LSB_entry.address = LSB_entry.base_value + LSB_entry.offset;
+                cout << "Address" << LSB_entry.base_value << " " << LSB_entry.offset << std::endl;
                 LSB_entry.address_ready = true;
             }
         }
@@ -334,24 +348,37 @@ void CPUCore::execute_stage(CPU_State &cpu) {
             continue;
         }
 
+        if (LSB_entry.execute_completed) {
+            continue;
+        }
+
+
         // 执行Load指令 - 需要3个周期访问内存
         if (InstructionProcessor::is_load_type(LSB_entry.op)) {
-            uint32_t forwarded_value;
-            if (check_load_dependencies(cpu, LSB_entry.address, LSB_entry.rob_idx,
-                                        forwarded_value)) {
-                // Store-to-Load转发，立即完成
-                broadcast_result(cpu, LSB_entry.dest_rob_idx, forwarded_value);
-                LSB_entry.busy = false;
-            } else {
-                // 从内存读取 - 需要执行周期
-                if (LSB_entry.execution_cycles_left == 0) {
-                    // 开始内存访问，设置为3个周期
+
+           /* cout << "Executing LSB instruction: " << std::hex << Type_string(LSB_entry.op)
+                 << " at address: " << std::dec << LSB_entry.address << " "
+                 << LSB_entry.execution_cycles_left << std::endl;*/
+
+            if (LSB_entry.execution_cycles_left == 0) {
+                uint32_t forwarded_value;
+                if (check_load_dependencies(cpu, LSB_entry.address, LSB_entry.rob_idx,
+                                            forwarded_value)) {
+                    ROBEntry &rob_entry = cpu.rob[LSB_entry.dest_rob_idx];
+                    rob_entry.value = forwarded_value;
+                    rob_entry.state = InstrState::Writeback;
+                    LSB_entry.execute_completed = true;
+                    LSB_entry.busy = false;
+                    continue; 
+                } else {
                     LSB_entry.execution_cycles_left = 3;
                 }
+            }
 
+            if (LSB_entry.execution_cycles_left > 0) {
                 LSB_entry.execution_cycles_left--;
+                load_units_used++;
 
-                // 内存访问完成
                 if (LSB_entry.execution_cycles_left == 0) {
                     if (LSB_entry.address < MEMORY_SIZE) {
                         uint32_t value = 0;
@@ -377,7 +404,10 @@ void CPUCore::execute_stage(CPU_State &cpu) {
                             value = 0;
                             break;
                         }
-                        broadcast_result(cpu, LSB_entry.dest_rob_idx, value);
+                        ROBEntry &rob_entry = cpu.rob[LSB_entry.dest_rob_idx];
+                        rob_entry.value = value;
+                        rob_entry.state = InstrState::Writeback;
+                        LSB_entry.execute_completed = true;
                         LSB_entry.busy = false;
                     }
                 }
@@ -386,31 +416,25 @@ void CPUCore::execute_stage(CPU_State &cpu) {
         // 执行Store指令 - 只准备数据，不花费周期
         else if (InstructionProcessor::is_store_type(LSB_entry.op)) {
 
-            if (LSB_entry.execute_completed) {
-                continue;
-            }
-
-            // Store指令在execute阶段不写内存，只是准备数据和地址
-            // 实际的内存写入在commit阶段进行
-
             // 检查要存储的值是否就绪
-            if (!LSB_entry.value_ready && LSB_entry.value_rob_idx != 0) {
+            if (!LSB_entry.value_ready && LSB_entry.value_rob_idx != ROB_SIZE) {
                 // 检查ROB中的值是否已经准备好
                 ROBEntry &value_rob = cpu.rob[LSB_entry.value_rob_idx];
                 if (value_rob.state >= InstrState::Writeback) {
                     LSB_entry.value = value_rob.value;
                     LSB_entry.value_ready = true;
-                    LSB_entry.value_rob_idx = 0;
+                    LSB_entry.value_rob_idx = ROB_SIZE;
                 }
             }
 
-            // 如果地址和值都准备好了，Store指令立即完成execute阶段
             if (LSB_entry.address_ready && LSB_entry.value_ready) {
-                // Store指令执行完成，广播结果（值为0，因为Store不产生寄存器结果）
-                broadcast_result(cpu, LSB_entry.dest_rob_idx, 0);
+                load_units_used++;
+                ROBEntry &rob_entry = cpu.rob[LSB_entry.dest_rob_idx];
+                rob_entry.value = 0;
+                rob_entry.state = InstrState::Writeback;
                 LSB_entry.execute_completed = true;
-                // 注意：不释放LSB条目，因为在commit阶段还需要它来写内存
-                cerr << "Store instruction prepared: address=" << std::hex << LSB_entry.address
+
+                cout << "Store instruction prepared: address=" << std::hex << LSB_entry.address
                      << " value=" << LSB_entry.value << std::dec << std::endl;
             }
         }
@@ -418,13 +442,17 @@ void CPUCore::execute_stage(CPU_State &cpu) {
 }
 
 void CPUCore::writeback_stage(CPU_State &cpu) {
-
+    // 在writeback阶段进行CDB广播
     for (uint32_t i = 0; i < ROB_SIZE; ++i) {
         ROBEntry &rob_entry = cpu.rob[i];
         if (rob_entry.busy && rob_entry.state == InstrState::Writeback) {
+
+            broadcast_result(cpu, i, rob_entry.value);
             rob_entry.state = InstrState::Commit;
-            cerr << "Writeback instruction: " << std::hex << Type_string(rob_entry.instr_type)
-                 << " at PC: " << rob_entry.pc << std::dec << std::endl;
+
+            cout << "Writeback instruction: " << std::hex << Type_string(rob_entry.instr_type)
+                 << " at PC: " << rob_entry.pc << " value=" << rob_entry.value << std::dec
+                 << std::endl;
         }
     }
 }
@@ -436,7 +464,8 @@ void CPUCore::commit_stage(CPU_State &cpu) {
     }
 
     ROBEntry &rob_entry = cpu.rob[cpu.rob_head];
-    cout << cpu.rob_head << " " << rob_entry.busy << std::endl;
+    cout << "commit" << cpu.rob_head << " " << rob_entry.busy << std::endl;
+
     if (!rob_entry.busy || rob_entry.state != InstrState::Commit) {
         return;
     }
@@ -481,11 +510,12 @@ void CPUCore::commit_stage(CPU_State &cpu) {
                             break;
                         }
 
-                        cerr << "Store instruction committed: address=" << std::hex
+                        cout << "Store instruction committed: address=" << std::hex
                              << LSB_entry.address << " value=" << LSB_entry.value << std::dec
                              << std::endl;
                     }
-
+                    cout << "Store instruction committed: address=" << std::hex << LSB_entry.address
+                         << " value=" << LSB_entry.value << std::dec << std::endl;
                     // 现在才释放LSB条目和ROB条目
                     LSB_entry.busy = false;
                     free_rob_entry(cpu);
@@ -495,7 +525,7 @@ void CPUCore::commit_stage(CPU_State &cpu) {
         }
     }
 
-    cerr << "Committing instruction: " << std::hex << Type_string(rob_entry.instr_type)
+    cout << "Committing instruction: " << std::hex << Type_string(rob_entry.instr_type)
          << " at PC: " << rob_entry.pc << std::dec << std::endl;
 
     if (rob_entry.dest_reg != 0 && !InstructionProcessor::is_branch_type(rob_entry.instr_type)) {
@@ -528,42 +558,12 @@ void CPUCore::commit_stage(CPU_State &cpu) {
         return;
     }
 
-    // 处理Store指令的内存写入
-    if (InstructionProcessor::is_store_type(rob_entry.instr_type)) {
-        // 找到对应的LSB条目
-        for (uint32_t i = 0; i < LSB_SIZE; ++i) {
-            LSBEntry &LSB_entry = cpu.LSB[i];
-            if (LSB_entry.busy && LSB_entry.rob_idx == cpu.rob_head) {
-                // 真正写入内存
-                if (LSB_entry.address < MEMORY_SIZE && LSB_entry.value_ready) {
-                    switch (LSB_entry.op) {
-                    case InstrType::STORE_SB:
-                        cpu.memory[LSB_entry.address] = static_cast<uint8_t>(LSB_entry.value);
-                        break;
-                    case InstrType::STORE_SH:
-                        *reinterpret_cast<uint16_t *>(&cpu.memory[LSB_entry.address]) =
-                            static_cast<uint16_t>(LSB_entry.value);
-                        break;
-                    case InstrType::STORE_SW:
-                        *reinterpret_cast<uint32_t *>(&cpu.memory[LSB_entry.address]) =
-                            LSB_entry.value;
-                        break;
-                    default:
-                        break;
-                    }
-                }
-                LSB_entry.busy = false;
-                break;
-            }
-        }
-    }
-
     // 释放ROB条目
     free_rob_entry(cpu);
 }
 
 // ROB管理函数
-bool CPUCore::rob_full(const CPU_State &cpu) const { return cpu.rob_size >= ROB_SIZE; }
+bool CPUCore::rob_full(const CPU_State &cpu) const { return cpu.rob_size >= ROB_SIZE - 1; }
 
 bool CPUCore::rob_empty(const CPU_State &cpu) const { return cpu.rob_size == 0; }
 
@@ -575,6 +575,8 @@ uint32_t CPUCore::allocate_rob_entry(CPU_State &cpu) {
 }
 
 void CPUCore::free_rob_entry(CPU_State &cpu) {
+    cout << "free_rob_entry: "
+         << " " << cpu.rob_head << "\n";
     cpu.rob[cpu.rob_head].busy = false;
     cpu.rob_head = (cpu.rob_head + 1) % ROB_SIZE;
     cpu.rob_size--;
@@ -635,15 +637,16 @@ void CPUCore::rename_registers(CPU_State &cpu, const ROBEntry &rob_entry, uint32
 
 uint32_t CPUCore::read_operand(const CPU_State &cpu, uint32_t reg_idx, uint32_t &rob_dependency) {
     if (reg_idx == 0) {
-        rob_dependency = 0;
+        rob_dependency = ROB_SIZE;
         return 0; // x0寄存器总是0
     }
-    cerr << "Reading operand from reg: " << reg_idx << " " << cpu.rat[reg_idx].busy << std::endl;
+    cout << "Reading operand from reg: " << reg_idx << " " << cpu.rat[reg_idx].busy << std::endl;
     if (cpu.rat[reg_idx].busy) {
         // 寄存器被重命名，检查ROB是否有结果
         uint32_t rob_idx = cpu.rat[reg_idx].rob_idx;
         if (cpu.rob[rob_idx].state >= InstrState::Writeback) {
-            rob_dependency = 0;
+            rob_dependency = ROB_SIZE;
+            // cout << rob_idx << " " << cpu.rob[rob_idx].value << std::endl;
             return cpu.rob[rob_idx].value;
         } else {
             rob_dependency = rob_idx;
@@ -651,28 +654,26 @@ uint32_t CPUCore::read_operand(const CPU_State &cpu, uint32_t reg_idx, uint32_t 
         }
     } else {
         // 从架构寄存器文件读取
-        rob_dependency = 0;
+        rob_dependency = ROB_SIZE;
         return cpu.arf.regs[reg_idx];
     }
 }
 
 // CDB广播
 void CPUCore::broadcast_result(CPU_State &cpu, uint32_t rob_idx, uint32_t value) {
-    // 更新ROB条目
-    cpu.rob[rob_idx].value = value;
-    cpu.rob[rob_idx].state = InstrState::Writeback;
-    cerr << "Broadcasting result: " << std::hex << value << " to ROB index: " << rob_idx << std::dec
-         << std::endl;
+
+    cout << "Broadcasting result: at pc" << std::hex << cpu.rob[rob_idx].pc << " value=" << value
+         << " to ROB index: " << rob_idx << std::dec << std::endl;
     for (uint32_t i = 0; i < RS_SIZE; ++i) {
         RSEntry &rs = cpu.rs_alu[i];
         if (rs.busy) {
             if (rs.Qj == rob_idx) {
                 rs.Vj = value;
-                rs.Qj = 0;
+                rs.Qj = ROB_SIZE;
             }
             if (rs.Qk == rob_idx) {
                 rs.Vk = value;
-                rs.Qk = 0;
+                rs.Qk = ROB_SIZE;
             }
         }
     }
@@ -682,41 +683,70 @@ void CPUCore::broadcast_result(CPU_State &cpu, uint32_t rob_idx, uint32_t value)
         LSBEntry &LSB = cpu.LSB[i];
         if (LSB.busy && LSB.base_rob_idx == rob_idx) {
             LSB.base_value = value;
-            LSB.base_rob_idx = 0;
+            LSB.base_rob_idx = ROB_SIZE;
             LSB.address_ready = true;
         }
         if (LSB.busy && LSB.value_rob_idx == rob_idx) {
             LSB.value = value;
-            LSB.value_rob_idx = 0;
+            LSB.value_rob_idx = ROB_SIZE;
             LSB.value_ready = true;
         }
     }
 }
 
-// 内存依赖检查
+bool CPUCore::is_earlier_instruction(const CPU_State &cpu, uint32_t rob_idx1, uint32_t rob_idx2) {
+
+    if (cpu.rob_size <= 1) {
+        return rob_idx1 < rob_idx2;
+    }
+
+    uint32_t pos1, pos2;
+
+    if (rob_idx1 >= cpu.rob_head) {
+        pos1 = rob_idx1 - cpu.rob_head;
+    } else {
+        pos1 = (ROB_SIZE - cpu.rob_head) + rob_idx1;
+    }
+
+    if (rob_idx2 >= cpu.rob_head) {
+        pos2 = rob_idx2 - cpu.rob_head;
+    } else {
+        pos2 = (ROB_SIZE - cpu.rob_head) + rob_idx2;
+    }
+
+    return pos1 < pos2;
+}
+
 bool CPUCore::check_load_dependencies(const CPU_State &cpu, uint32_t load_addr,
                                       uint32_t load_rob_idx, uint32_t &forwarded_value) {
-    // 检查所有更早的Store指令
+
     for (uint32_t i = 0; i < LSB_SIZE; ++i) {
         const LSBEntry &LSB = cpu.LSB[i];
-        if (LSB.busy && InstructionProcessor::is_store_type(LSB.op) && LSB.rob_idx < load_rob_idx) {
 
-            if (!LSB.address_ready) {
-                // Store地址未准备好，Load必须等待
-                return false;
-            }
+        if (!LSB.busy || !InstructionProcessor::is_store_type(LSB.op)) {
+            continue;
+        }
 
-            if (LSB.address == load_addr && LSB.value_ready) {
-                // 地址匹配且数据就绪，进行Store-to-Load转发
+        if (!is_earlier_instruction(cpu, LSB.rob_idx, load_rob_idx)) {
+            continue;
+        }
+
+        if (!LSB.address_ready) {
+            return false;
+        }
+
+        if (LSB.address == load_addr) {
+            if (LSB.value_ready && LSB.execute_completed) {
                 forwarded_value = LSB.value;
                 return true;
+            } else {
+                return false;
             }
         }
     }
 
-    return false; // 没有依赖，可以从内存读取
+    return false;
 }
-
 // 分支预测
 bool CPUCore::predict_branch_taken(const CPU_State &cpu) { return false; }
 
@@ -757,7 +787,7 @@ void CPUCore::flush_pipeline(CPU_State &cpu) {
     for (int i = 0; i < 32; ++i) {
 
         cpu.rat[i].busy = false;
-        cpu.rat[i].rob_idx = 0;
+        cpu.rat[i].rob_idx = ROB_SIZE;
     }
 
     cpu.pipeline_flushed = true;

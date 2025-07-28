@@ -16,3 +16,6 @@ add_executable(code
     src/riscv_simulator.cpp
     main.cpp
 )
+
+target_compile_options(code PRIVATE -fsanitize=address,leak,undefined)
+target_link_libraries(code PRIVATE -fsanitize=address,leak,undefined)

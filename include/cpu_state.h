@@ -9,10 +9,12 @@ using std::cerr;
 using std::cout;
 const int MEMORY_SIZE = 1024 * 1024;
 const uint32_t HALT_INSTRUCTION = 0x0ff00513;
-const int ROB_SIZE = 4;
+const int ROB_SIZE = 5;
 const int RS_SIZE = 16;
 const int LSB_SIZE = 16;
-const int FETCH_BUFFER_SIZE = 4;
+const int FETCH_BUFFER_SIZE = 5;
+const uint32_t MAX_ALU_UNITS = 1;
+const uint32_t MAX_LOAD_UNITS = 1;
 
 enum class InstrType {
     ALU_ADD,
@@ -114,8 +116,8 @@ struct ROBEntry {
     uint32_t imm;      // 立即数
 
     ROBEntry()
-        : busy(false), is_branch(false), predicted_taken(false), actual_taken(false), rs1(0),
-          rs2(0), imm(0) {}
+        : busy(false), value(0), is_branch(false), predicted_taken(false), actual_taken(false),
+          rs1(0), rs2(0), imm(0) {}
 };
 
 // 预约站
@@ -130,10 +132,10 @@ struct RSEntry {
     // 执行计时器
     int execution_cycles_left;
 
-    RSEntry() : busy(false), Qj(0), Qk(0), execution_cycles_left(0) {}
+    RSEntry() : busy(false), Qj(ROB_SIZE), Qk(ROB_SIZE), execution_cycles_left(0) {}
 
     // 检查操作数是否都就绪
-    bool operands_ready() const { return Qj == 0 && Qk == 0; }
+    bool operands_ready() const { return Qj == ROB_SIZE && Qk == ROB_SIZE; }
 };
 
 // Load/Store队列
