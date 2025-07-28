@@ -54,6 +54,8 @@ class CPUCore {
 
     bool check_load_dependencies(const CPU_State &cpu, uint32_t load_addr, uint32_t load_rob_idx,
                                  uint32_t &forwarded_value);
+    bool get_load_values(const CPU_State &cpu, uint32_t load_addr, uint32_t load_rob_idx,
+                         uint32_t &forwarded_value);
 
     // 分支预测和处理
     bool predict_branch_taken(const CPU_State &cpu);
@@ -65,6 +67,5 @@ class CPUCore {
     uint64_t instruction_count_;
     uint64_t branch_mispredictions_; // 分支预测错误计数
 };
-
 
 #endif // CPU_CORE_H

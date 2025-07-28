@@ -32,11 +32,10 @@ void RISCV_Simulator::load_program() {
 }
 
 void RISCV_Simulator::run() {
-    int cycle_count = 0;
+    // int cycle_count = 0;
 
     while (!is_halted) {
         tick();
-       
     }
 
     print_result();
@@ -44,13 +43,11 @@ void RISCV_Simulator::run() {
 
 void RISCV_Simulator::tick() {
     cpu_core->tick(cpu);
-    // 检查是否所有指令都完成了
     if (cpu.fetch_stalled) {
         is_halted = true;
         return;
     }
 
-    // 如果PC超出范围，也停止模拟
     if (cpu.pc >= MEMORY_SIZE - 3) {
         is_halted = true;
         return;
@@ -76,11 +73,9 @@ void RISCV_Simulator::print_result() {
     uint32_t result = cpu.arf.regs[10] & 0xFF;
     std::cout << std::dec << result << std::endl;
 
-    /*
-    std::cout << "Cycles: " << cpu_core->get_cycle_count() << std::endl;
-    std::cout << "Instructions: " << cpu_core->get_instruction_count() << std::endl;
-    std::cout << "Branch mispredictions: " << cpu_core->get_branch_mispredictions() << std::endl;
-    std::cout << "Final PC: " << std::hex << cpu.pc << std::dec << std::endl;
-    std::cout << "Register a0 (x10): " << cpu.arf.regs[10] << std::endl;
-    */
+    /* std::cout << "Cycles: " << cpu_core->get_cycle_count() << std::endl;
+      std::cout << "Instructions: " << cpu_core->get_instruction_count() << std::endl;
+      std::cout << "Branch mispredictions: " << cpu_core->get_branch_mispredictions() << std::endl;
+      std::cout << "Final PC: " << std::hex << cpu.pc << std::dec << std::endl;
+      std::cout << "Register a0 (x10): " << cpu.arf.regs[10] << std::endl;*/
 }

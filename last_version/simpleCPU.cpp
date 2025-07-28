@@ -1,13 +1,14 @@
 #include <bitset>
 #include <cstdint>
 #include <iostream>
+#include <iterator>
 #include <string>
 #include <sys/types.h>
 
 const int MEMORY_SIZE = 1024 * 1024;
 const uint32_t HALT_INSTRUCTION = 0x0ff00513;
 
-using std::cerr;
+using std::cout;
 
 struct CPU_State {
     uint32_t pc;
@@ -71,15 +72,11 @@ class RISCV_Simulator {
         }
 
         // DECODE & EXECUTE
-        if (cnt == 126) {
-            std::cout << std::bitset<32>(instruction) << " " << std::hex << " " << cpu.pc
-                      << std::dec << std::endl;
-        }
+
+        std::cout << instruction << " " << std::hex << " " << cpu.pc << std::dec << std::endl;
 
         uint32_t next_pc = cpu.pc + 4;
 
-        if (cnt > 145069)
-            exit(0);
         decode_and_execute(instruction, next_pc);
 
         cpu.pc = next_pc;
@@ -92,12 +89,15 @@ class RISCV_Simulator {
         for (int i = 0; i < 32; i++)
             std::cout << cpu.regs[i] << " ";
         std::cout << "\n";
+
+        if (cnt > 10000)
+            exit(0);
     }
 
     uint32_t fetch_instruction() {
 
         if (cpu.pc >= MEMORY_SIZE - 3) {
-            std::cerr << "Error: Program Counter out of bounds!" << std::endl;
+            std::cout << "Error: Program Counter out of bounds!" << std::endl;
             is_halted = true;
             return 0;
         }
@@ -131,7 +131,7 @@ class RISCV_Simulator {
             if (rd != 0)
                 cpu.regs[rd] = (imm << 12) + cpu.pc;
 
-            // std::cerr<< "auipc"
+            // std::cout<< "auipc"
             //   << " " << rd << " " << imm;
 
             break;
@@ -156,7 +156,7 @@ class RISCV_Simulator {
             }
             next_pc = cpu.pc + offset;
 
-            // cerr<< "jal" << std::dec << " " << offset << " " << next_pc << " " << rd << "\n";
+            // cout<< "jal" << std::dec << " " << offset << " " << next_pc << " " << rd << "\n";
 
             break;
         } // J-TYPE
@@ -174,12 +174,12 @@ class RISCV_Simulator {
                     cpu.regs[rd] = cpu.pc + 4;
                 }
             } else {
-                std::cerr << "Error: Unknown J-type instruction " << std::hex << instruction
+                std::cout << "Error: Unknown J-type instruction " << std::hex << instruction
                           << " at pc " << cpu.pc << std::endl;
                 is_halted = true;
             }
 
-            // cerr<< "jalr" << std::dec << " " << rd << " " << rs1 << " " << imm << "\n";
+            // cout<< "jalr" << std::dec << " " << rd << " " << rs1 << " " << imm << "\n";
             break;
         } // I-TYPE JALR
 
@@ -201,45 +201,45 @@ class RISCV_Simulator {
                 if (cpu.regs[rs1] == cpu.regs[rs2]) {
                     next_pc = cpu.pc + offset;
                 }
-                // cerr<< "beq ";
+                // cout<< "beq ";
             } // Branch if Equal
             else if (funct3 == 0b001) {
                 if (cpu.regs[rs1] != cpu.regs[rs2]) {
                     next_pc = cpu.pc + offset;
                 }
-                // cerr<< "bne ";
+                // cout<< "bne ";
             } // Branch if Not Equal
             else if (funct3 == 0b100) {
                 if (static_cast<int32_t>(cpu.regs[rs1]) < static_cast<int32_t>(cpu.regs[rs2])) {
                     next_pc = cpu.pc + offset;
                 }
-                // cerr<< "blt ";
+                // cout<< "blt ";
             } // Branch if Less Than
             else if (funct3 == 0b101) {
                 if (static_cast<int32_t>(cpu.regs[rs1]) >= static_cast<int32_t>(cpu.regs[rs2])) {
                     next_pc = cpu.pc + offset;
                 }
-                // cerr<< "bge ";
+                // cout<< "bge ";
             } // Branch if Greater Than or Equal
             else if (funct3 == 0b110) {
                 if (cpu.regs[rs1] < cpu.regs[rs2]) {
                     next_pc = cpu.pc + offset;
                 }
-                // cerr<< "bltu ";
+                // cout<< "bltu ";
 
             } // Branch if Less Than, Unsigned
             else if (funct3 == 0b111) {
                 if (cpu.regs[rs1] >= cpu.regs[rs2]) {
                     next_pc = cpu.pc + offset;
                 }
-                // cerr<< "bgeu ";
+                // cout<< "bgeu ";
             } // Branch if Greater Than or Equal, Unsigned
             else {
-                std::cerr << "Error: Unknown branch instruction " << std::hex << instruction
+                std::cout << "Error: Unknown branch instruction " << std::hex << instruction
                           << " at pc " << cpu.pc << std::endl;
                 is_halted = true;
             }
-            // cerr<< std::dec << " " << funct3 << " " << rs1 << " " << rs2 << " " << offset <<
+            // cout<< std::dec << " " << funct3 << " " << rs1 << " " << rs2 << " " << offset <<
             // "\n";
             break;
         } // B-TYPE
@@ -254,7 +254,7 @@ class RISCV_Simulator {
                 uint32_t address =
                     static_cast<uint32_t>(static_cast<int32_t>(cpu.regs[rs1]) + offset);
                 if (address >= MEMORY_SIZE) {
-                    std::cerr << "Error: Memory access out of bounds at pc " << std::hex << cpu.pc
+                    std::cout << "Error: Memory access out of bounds at pc " << std::hex << cpu.pc
                               << ", trying to access " << address << std::endl;
                     is_halted = true;
                     return;
@@ -263,20 +263,21 @@ class RISCV_Simulator {
                 if (rd != 0)
                     cpu.regs[rd] = static_cast<int32_t>(static_cast<int8_t>(cpu.memory[address]));
 
-                // cerr<< "lb ";
+                std::cout << "lb " << std::hex << " " << address << std::dec << " " << rs1 << " "
+                          << offset << " " << cpu.regs[rs1] << " " << cpu.regs[rd] << "\n";
 
             } // Load Byte
             else if (funct3 == 0b001) {
                 uint32_t address =
                     static_cast<uint32_t>(static_cast<int32_t>(cpu.regs[rs1]) + offset);
                 if (address >= MEMORY_SIZE - 1) {
-                    std::cerr << "Error: Memory access out of bounds at pc " << std::hex << cpu.pc
+                    std::cout << "Error: Memory access out of bounds at pc " << std::hex << cpu.pc
                               << ", trying to access " << address + 1 << std::endl;
                     is_halted = true;
                     return;
                 }
                 if (address % 2 != 0) {
-                    std::cerr << "Error: Misaligned memory access at pc " << std::hex << cpu.pc
+                    std::cout << "Error: Misaligned memory access at pc " << std::hex << cpu.pc
                               << ", trying to access " << address << std::endl;
                     is_halted = true;
                     return;
@@ -287,20 +288,20 @@ class RISCV_Simulator {
                         static_cast<uint16_t>(cpu.memory[address]) |
                         (static_cast<uint16_t>(cpu.memory[address + 1]) << 8)));
 
-                // cerr<< "lh ";
+                cout << "lh ";
             } // Load Halfword
             else if (funct3 == 0b010) {
                 uint32_t address =
                     static_cast<uint32_t>(static_cast<int32_t>(cpu.regs[rs1]) + offset);
                 if (address >= MEMORY_SIZE - 3) {
-                    std::cerr << "Error: Memory access out of bounds at pc " << std::hex << cpu.pc
+                    std::cout << "Error: Memory access out of bounds at pc " << std::hex << cpu.pc
                               << ", trying to access " << address + 3 << std::endl;
                     is_halted = true;
                     return;
                 }
 
                 if (address % 4 != 0) {
-                    std::cerr << "Error: Misaligned memory access at pc " << std::hex << cpu.pc
+                    std::cout << "Error: Misaligned memory access at pc " << std::hex << cpu.pc
                               << ", trying to access " << address << std::endl;
                     is_halted = true;
                     return;
@@ -312,14 +313,14 @@ class RISCV_Simulator {
                                    (static_cast<uint32_t>(cpu.memory[address + 2]) << 16) |
                                    (static_cast<uint32_t>(cpu.memory[address + 3]) << 24);
 
-                ////cerr<< "lw " << std::dec << " " << address << " " << rs1 << " " << offset << " "
-                // << cpu.regs[rs1] << " " << cpu.regs[rd] << "\n";
+                std::cout << "lw " << std::hex << " " << address << std::dec << " " << rs1 << " "
+                          << offset << " " << cpu.regs[rs1] << " " << cpu.regs[rd] << "\n";
             } // Load Word
             else if (funct3 == 0b100) {
                 uint32_t address =
                     static_cast<uint32_t>(static_cast<int32_t>(cpu.regs[rs1]) + offset);
                 if (address >= MEMORY_SIZE) {
-                    std::cerr << "Error: Memory access out of bounds at pc " << std::hex << cpu.pc
+                    std::cout << "Error: Memory access out of bounds at pc " << std::hex << cpu.pc
                               << ", trying to access " << address << std::endl;
                     is_halted = true;
                     return;
@@ -328,19 +329,20 @@ class RISCV_Simulator {
                 if (rd != 0)
                     cpu.regs[rd] = cpu.memory[address];
 
-                // cerr<< "lbu ";
+                std::cout << "lbu " << std::hex << " " << address << std::dec << " " << rs1 << " "
+                          << offset << " " << cpu.regs[rs1] << " " << cpu.regs[rd] << "\n";
             } // Load Byte, Unsigned
             else if (funct3 == 0b101) {
                 uint32_t address =
                     static_cast<uint32_t>(static_cast<int32_t>(cpu.regs[rs1]) + offset);
                 if (address >= MEMORY_SIZE - 1) {
-                    std::cerr << "Error: Memory access out of bounds at pc " << std::hex << cpu.pc
+                    std::cout << "Error: Memory access out of bounds at pc " << std::hex << cpu.pc
                               << ", trying to access " << address + 1 << std::endl;
                     is_halted = true;
                     return;
                 }
                 if (address % 2 != 0) {
-                    std::cerr << "Error: Misaligned memory access at pc " << std::hex << cpu.pc
+                    std::cout << "Error: Misaligned memory access at pc " << std::hex << cpu.pc
                               << ", trying to access " << address << std::endl;
                     is_halted = true;
                     return;
@@ -349,16 +351,17 @@ class RISCV_Simulator {
                     cpu.regs[rd] = static_cast<uint32_t>(cpu.memory[address]) |
                                    (static_cast<uint32_t>(cpu.memory[address + 1]) << 8);
 
-                // cerr<< "lhu ";
+                std::cout << "lhu " << std::hex << " " << address << std::dec << " " << rs1 << " "
+                          << offset << " " << cpu.regs[rs1] << " " << cpu.regs[rd] << "\n";
 
             } // Load Halfword, Unsigned
             else {
-                std::cerr << "Error: Unknown load instruction " << std::hex << instruction
+                std::cout << "Error: Unknown load instruction " << std::hex << instruction
                           << " at pc " << cpu.pc << std::endl;
                 is_halted = true;
             }
 
-            // cerr<< std::dec << " " << rd << " " << rs1 << " " << offset << "\n";
+            cout << std::dec << " " << rd << " " << rs1 << " " << offset << "\n";
             break;
         } // I-TYPE LOAD
 
@@ -375,26 +378,26 @@ class RISCV_Simulator {
                 uint32_t address =
                     static_cast<uint32_t>(static_cast<int32_t>(cpu.regs[rs1]) + offset);
                 if (address >= MEMORY_SIZE) {
-                    std::cerr << "Error: Memory access out of bounds at pc " << std::hex << cpu.pc
+                    std::cout << "Error: Memory access out of bounds at pc " << std::hex << cpu.pc
                               << ", trying to access " << address << std::endl;
                     is_halted = true;
                     return;
                 }
                 cpu.memory[address] = static_cast<uint8_t>(cpu.regs[rs2]);
-
-                // cerr<< "sb ";
+                std::cout << "sb " << std::hex << " " << address << " " << rs2 << " "
+                          << cpu.regs[rs2] << std::dec << "\n";
             } // Store Byte
             else if (funct3 == 0b001) {
                 uint32_t address =
                     static_cast<uint32_t>(static_cast<int32_t>(cpu.regs[rs1]) + offset);
                 if (address + 1 >= MEMORY_SIZE) {
-                    std::cerr << "Error: Memory access out of bounds at pc " << std::hex << cpu.pc
+                    std::cout << "Error: Memory access out of bounds at pc " << std::hex << cpu.pc
                               << ", trying to access " << address + 1 << std::endl;
                     is_halted = true;
                     return;
                 }
                 if (address % 2 != 0) {
-                    std::cerr << "Error: Misaligned memory access at pc " << std::hex << cpu.pc
+                    std::cout << "Error: Misaligned memory access at pc " << std::hex << cpu.pc
                               << ", trying to access " << address << std::endl;
                     is_halted = true;
                     return;
@@ -402,19 +405,20 @@ class RISCV_Simulator {
 
                 cpu.memory[address] = static_cast<uint8_t>(cpu.regs[rs2]);
                 cpu.memory[address + 1] = static_cast<uint8_t>(cpu.regs[rs2] >> 8);
-                // cerr<< "sh ";
+                std::cout << "sh " << std::hex << " " << address << " " << rs2 << " "
+                          << cpu.regs[rs2] << std::dec << "\n";
             } // Store Halfword
             else if (funct3 == 0b010) {
                 uint32_t address =
                     static_cast<uint32_t>(static_cast<int32_t>(cpu.regs[rs1]) + offset);
                 if (address >= MEMORY_SIZE - 3) {
-                    std::cerr << "Error: Memory access out of bounds at pc " << std::hex << cpu.pc
+                    std::cout << "Error: Memory access out of bounds at pc " << std::hex << cpu.pc
                               << ", trying to access " << address + 3 << std::endl;
                     is_halted = true;
                     return;
                 }
                 if (address % 4 != 0) {
-                    std::cerr << "Error: Misaligned memory access at pc " << std::hex << cpu.pc
+                    std::cout << "Error: Misaligned memory access at pc " << std::hex << cpu.pc
                               << ", trying to access " << address << std::endl;
 
                     is_halted = true;
@@ -425,14 +429,15 @@ class RISCV_Simulator {
                 cpu.memory[address + 1] = static_cast<uint8_t>(cpu.regs[rs2] >> 8);
                 cpu.memory[address + 2] = static_cast<uint8_t>(cpu.regs[rs2] >> 16);
                 cpu.memory[address + 3] = static_cast<uint8_t>(cpu.regs[rs2] >> 24);
-                // cerr<< "sw ";
+                std::cout << "sw " << std::hex << " " << address << " " << rs2 << " "
+                          << cpu.regs[rs2] << std::dec << "\n";
             } // Store Word
             else {
-                std::cerr << "Error: Unknown store instruction " << std::hex << instruction
+                std::cout << "Error: Unknown store instruction " << std::hex << instruction
                           << " at pc " << cpu.pc << std::endl;
                 is_halted = true;
             }
-            // cerr<< std::dec << " " << rs1 << " " << rs2 << " " << offset << "\n";
+            cout << std::dec << " " << rs1 << " " << rs2 << " " << offset << "\n";
             break;
         } // S-TYPE STORE
         case 0b0010011: {
@@ -444,57 +449,57 @@ class RISCV_Simulator {
             if (funct3 == 0b000) {
                 if (rd != 0)
                     cpu.regs[rd] = static_cast<uint32_t>(static_cast<int32_t>(cpu.regs[rs1]) + imm);
-                // cerr<< "addi ";
+                // cout<< "addi ";
             } // Add Immediate
             else if (funct3 == 0b010) {
                 if (rd != 0)
                     cpu.regs[rd] = (static_cast<int32_t>(cpu.regs[rs1]) < (imm)) ? 1 : 0;
-                // cerr<< "slti ";
+                // cout<< "slti ";
             } // Set if Less Than Immediate
             else if (funct3 == 0b011) {
                 if (rd != 0)
                     cpu.regs[rd] = (cpu.regs[rs1] < static_cast<uint32_t>(imm)) ? 1 : 0;
-                // cerr<< "sltiu ";
+                // cout<< "sltiu ";
             } // Set if Less Than Immediate, Unsigned
             else if (funct3 == 0b100) {
                 if (rd != 0)
                     cpu.regs[rd] = cpu.regs[rs1] ^ imm;
-                // cerr<< "xori ";
+                // cout<< "xori ";
             } // XORI
             else if (funct3 == 0b110) {
                 if (rd != 0)
                     cpu.regs[rd] = cpu.regs[rs1] | imm;
-                // cerr<< "ori ";
+                // cout<< "ori ";
             } // ORI
             else if (funct3 == 0b111) {
                 if (rd != 0)
                     cpu.regs[rd] = cpu.regs[rs1] & imm;
-                // cerr<< "andi ";
+                // cout<< "andi ";
             } // ANDI
             else if (funct3 == 0b001) {
                 if (rd != 0)
                     cpu.regs[rd] = cpu.regs[rs1] << (imm & 0x1F);
-                // cerr<< "slli ";
+                // cout<< "slli ";
             } // Shift Left Logical Immediate
             else if (funct3 == 0b101 && ((instruction >> 30) & 1) == 0) {
                 if (rd != 0)
                     cpu.regs[rd] = cpu.regs[rs1] >> (imm & 0x1F);
-                // cerr<< "srli ";
+                // cout<< "srli ";
             } // Shift Right Logical Immediate
             else if (funct3 == 0b101 && ((instruction >> 30) & 1) == 1) {
                 if (rd != 0)
                     cpu.regs[rd] =
                         static_cast<uint32_t>(static_cast<int32_t>(cpu.regs[rs1]) >> (imm & 0x1F));
-                // cerr<< "srai ";
+                // cout<< "srai ";
             } // Shift Right Arithmetic Immediate
             else {
-                std::cerr << "Error: Unknown I-type instruction " << std::hex << instruction
+                std::cout << "Error: Unknown I-type instruction " << std::hex << instruction
                           << " at pc " << cpu.pc << std::endl;
 
                 is_halted = true;
             }
 
-            // cerr<< std::dec << std::dec << " " << rd << " " << rs1 << " " << imm << "\n";
+            // cout<< std::dec << std::dec << " " << rd << " " << rs1 << " " << imm << "\n";
             break;
         } // I-TYPE Immediate
 
@@ -508,17 +513,17 @@ class RISCV_Simulator {
             if (funct3 == 0 && funct7 == 0) {
                 if (rd != 0)
                     cpu.regs[rd] = cpu.regs[rs1] + cpu.regs[rs2];
-                // cerr<< "add ";
+                // cout<< "add ";
             } // add
             else if (funct3 == 0 && funct7 == 0b0100000) {
                 if (rd != 0)
                     cpu.regs[rd] = cpu.regs[rs1] - cpu.regs[rs2];
-                // cerr<< "sub ";
+                // cout<< "sub ";
             } // sub
             else if (funct3 == 0b001 && funct7 == 0b0000000) {
                 if (rd != 0)
                     cpu.regs[rd] = cpu.regs[rs1] << (cpu.regs[rs2] & 0x1F);
-                // cerr<< "sll ";
+                // cout<< "sll ";
 
             } // Shift Left Logical
             else if (funct3 == 0b010 && funct7 == 0b0000000) {
@@ -529,7 +534,7 @@ class RISCV_Simulator {
                     if (rd != 0)
                         cpu.regs[rd] = 0;
                 }
-                // cerr<< "slt ";
+                // cout<< "slt ";
 
             } // Set if Less Than
             else if (funct3 == 0b011 && funct7 == 0b0000000) {
@@ -540,50 +545,50 @@ class RISCV_Simulator {
                     if (rd != 0)
                         cpu.regs[rd] = 0;
                 }
-                // cerr<< "sltu ";
+                // cout<< "sltu ";
             } // Set if Less Than, Unsigned
             else if (funct3 == 0b100 && funct7 == 0b0000000) {
                 if (rd != 0)
                     cpu.regs[rd] = cpu.regs[rs1] ^ cpu.regs[rs2];
-                // cerr<< "xor ";
+                // cout<< "xor ";
             } // XOR
             else if (funct3 == 0b101 && funct7 == 0b0100000) {
                 if (rd != 0)
                     cpu.regs[rd] = static_cast<uint32_t>(static_cast<int32_t>(cpu.regs[rs1]) >>
                                                          (cpu.regs[rs2] & 0x1F));
 
-                // cerr<< "sra ";
+                // cout<< "sra ";
             } // Shift Right Arithmetic
             else if (funct3 == 0b101 && funct7 == 0b0000000) {
                 if (rd != 0)
                     cpu.regs[rd] = cpu.regs[rs1] >> (cpu.regs[rs2] & 0x1F);
 
-                // cerr<< "srl ";
+                // cout<< "srl ";
 
             } // Shift Right Logical
             else if (funct3 == 0b110 && funct7 == 0b0000000) {
                 if (rd != 0)
                     cpu.regs[rd] = cpu.regs[rs1] | cpu.regs[rs2];
-                // cerr<< "or ";
+                // cout<< "or ";
             } // OR
             else if (funct3 == 0b111 && funct7 == 0b0000000) {
                 if (rd != 0)
                     cpu.regs[rd] = cpu.regs[rs1] & cpu.regs[rs2];
-                // cerr<< "and ";
+                // cout<< "and ";
             } // AND
             else {
-                std::cerr << "Error: Unknown R-type instruction " << std::hex << instruction
+                std::cout << "Error: Unknown R-type instruction " << std::hex << instruction
                           << " at pc " << cpu.pc << std::endl;
                 is_halted = true;
             }
-            // cerr<< " " << rd << " " << rs1 << " " << rs2 << " " << funct3 << " " << funct7 <<
+            // cout<< " " << rd << " " << rs1 << " " << rs2 << " " << funct3 << " " << funct7 <<
             // "\n";
 
             break;
 
         } // R-TYPE
         default: {
-            std::cerr << std::dec << "Error: Unknown instruction " << std::hex << instruction
+            std::cout << std::dec << "Error: Unknown instruction " << std::hex << instruction
                       << " at pc " << cpu.pc << std::endl;
             is_halted = true;
             break;
