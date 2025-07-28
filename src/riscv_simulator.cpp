@@ -32,17 +32,11 @@ void RISCV_Simulator::load_program() {
 }
 
 void RISCV_Simulator::run() {
-    int max_cycles = 50000000;
     int cycle_count = 0;
 
-    while (!is_halted && cycle_count < max_cycles) {
+    while (!is_halted) {
         tick();
-        cycle_count++;
-        // cout << "Cycle: " << cycle_count << std::endl;
-    }
-
-    if (cycle_count >= max_cycles) {
-        std::cout << "Warning: Simulation terminated due to cycle limit" << std::endl;
+       
     }
 
     print_result();
