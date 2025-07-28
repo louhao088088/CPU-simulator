@@ -32,7 +32,7 @@ void RISCV_Simulator::load_program() {
 }
 
 void RISCV_Simulator::run() {
-    int max_cycles = 5000;
+    int max_cycles = 50000000;
     int cycle_count = 0;
 
     while (!is_halted && cycle_count < max_cycles) {
