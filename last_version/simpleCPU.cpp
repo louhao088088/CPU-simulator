@@ -71,13 +71,11 @@ class RISCV_Simulator {
         }
 
         // DECODE & EXECUTE
-        cnt++;
-        std::cout << cpu.pc << " \n";
-        std::cout << cnt << " " << cpu.pc << " "
-                  << "\n";
-        for (int i = 1; i < 32; i++)
-            std::cout << cpu.regs[i] << " ";
-        std::cout << "\n";
+        if (cnt == 126) {
+            std::cout << std::bitset<32>(instruction) << " " << std::hex << " " << cpu.pc
+                      << std::dec << std::endl;
+        }
+
         uint32_t next_pc = cpu.pc + 4;
 
         if (cnt > 145069)
@@ -87,6 +85,13 @@ class RISCV_Simulator {
         cpu.pc = next_pc;
 
         cpu.regs[0] = 0;
+        cnt++;
+
+        std::cout << cnt << " "
+                  << "\n";
+        for (int i = 0; i < 32; i++)
+            std::cout << cpu.regs[i] << " ";
+        std::cout << "\n";
     }
 
     uint32_t fetch_instruction() {
@@ -126,8 +131,8 @@ class RISCV_Simulator {
             if (rd != 0)
                 cpu.regs[rd] = (imm << 12) + cpu.pc;
 
-            // std:://cerr<< "auipc"
-            //     << " " << rd << " " << imm;
+            // std::cerr<< "auipc"
+            //   << " " << rd << " " << imm;
 
             break;
         } // U-TYPE auipc

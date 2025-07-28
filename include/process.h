@@ -66,4 +66,5 @@ class CPUCore {
     uint64_t branch_mispredictions_; // 分支预测错误计数
 };
 
+
 #endif // CPU_CORE_H

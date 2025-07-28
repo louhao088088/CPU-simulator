@@ -32,13 +32,13 @@ void RISCV_Simulator::load_program() {
 }
 
 void RISCV_Simulator::run() {
-    int max_cycles = 50000;
+    int max_cycles = 5000;
     int cycle_count = 0;
 
     while (!is_halted && cycle_count < max_cycles) {
         tick();
         cycle_count++;
-        cout << "Cycle: " << cycle_count << std::endl;
+        // cout << "Cycle: " << cycle_count << std::endl;
     }
 
     if (cycle_count >= max_cycles) {
@@ -50,11 +50,6 @@ void RISCV_Simulator::run() {
 
 void RISCV_Simulator::tick() {
     cpu_core->tick(cpu);
-
-    for (int i = 0; i < 32; i++) {
-        cout << std::dec << cpu.arf.regs[i] << " ";
-    }
-    cout << std::endl;
     // 检查是否所有指令都完成了
     if (cpu.fetch_stalled) {
         is_halted = true;
@@ -85,7 +80,7 @@ uint32_t RISCV_Simulator::fetch_instruction() {
 
 void RISCV_Simulator::print_result() {
     uint32_t result = cpu.arf.regs[10] & 0xFF;
-    std::cout << result << std::endl;
+    std::cout << std::dec << result << std::endl;
 
     // 添加调试信息
     std::cout << "Cycles: " << cpu_core->get_cycle_count() << std::endl;
