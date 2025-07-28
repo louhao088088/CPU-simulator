@@ -82,10 +82,11 @@ void RISCV_Simulator::print_result() {
     uint32_t result = cpu.arf.regs[10] & 0xFF;
     std::cout << std::dec << result << std::endl;
 
-    // 添加调试信息
+    /*
     std::cout << "Cycles: " << cpu_core->get_cycle_count() << std::endl;
     std::cout << "Instructions: " << cpu_core->get_instruction_count() << std::endl;
     std::cout << "Branch mispredictions: " << cpu_core->get_branch_mispredictions() << std::endl;
     std::cout << "Final PC: " << std::hex << cpu.pc << std::dec << std::endl;
     std::cout << "Register a0 (x10): " << cpu.arf.regs[10] << std::endl;
+    */
 }

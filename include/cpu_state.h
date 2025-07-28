@@ -156,7 +156,7 @@ struct LSBEntry {
 
     uint32_t value_rob_idx; // 存储值依赖的ROB索引
 
-    uint32_t execution_cycles_left;
+    uint32_t execution_cycles_left; // 执行周期计数器
 
     bool execute_completed; // 标记execute阶段是否已完成
 

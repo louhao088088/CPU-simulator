@@ -6,7 +6,6 @@ int CNT = 0;
 CPUCore::CPUCore() : cycle_count_(0), instruction_count_(0), branch_mispredictions_(0) {}
 
 void CPUCore::tick(CPU_State &cpu) {
-    // 按倒序执行各个阶段，防止指令在一个周期内穿越多个阶段
     commit_stage(cpu);
     writeback_stage(cpu);
     execute_stage(cpu);
@@ -19,8 +18,8 @@ void CPUCore::tick(CPU_State &cpu) {
 
 void CPUCore::fetch_stage(CPU_State &cpu) {
 
-    cout << "Fetch stage: PC = " << std::hex << cpu.pc << " " << cpu.rob_size << " "
-         << cpu.fetch_stalled << std::endl;
+    /* cout << "Fetch stage: PC = " << std::hex << cpu.pc << " " << cpu.rob_size << " "
+          << cpu.fetch_stalled << std::endl;*/
 
     if (rob_full(cpu) || cpu.fetch_stalled) {
         return;
@@ -30,7 +29,6 @@ void CPUCore::fetch_stage(CPU_State &cpu) {
         return;
     }
 
-    // 从内存取指令
     if (cpu.pc < MEMORY_SIZE - 3) {
 
         uint32_t instruction = cpu.memory[cpu.pc] | (cpu.memory[cpu.pc + 1] << 8) |
@@ -41,16 +39,15 @@ void CPUCore::fetch_stage(CPU_State &cpu) {
         entry.instruction = instruction;
         entry.pc = cpu.pc;
 
-        cout << "Fetched instruction: " << std::hex << instruction << " at PC: " << cpu.pc
-             << std::dec << std::endl;
+        /*cout << "Fetched instruction: " << std::hex << instruction << " at PC: " << cpu.pc
+             << std::dec << std::endl;*/
 
         cpu.fetch_buffer_tail = (cpu.fetch_buffer_tail + 1) % FETCH_BUFFER_SIZE;
         cpu.fetch_buffer_size++;
 
-        // 简单分支预测：预测不跳转，PC+4
         cpu.pc += 4;
     } else {
-        // PC超出范围，停止取指
+
         cpu.fetch_stalled = true;
     }
 }
@@ -83,14 +80,12 @@ void CPUCore::decode_rename_stage(CPU_State &cpu) {
             return;
         }
     }
-    cout << "Decoded instruction: " << std::hex << instr.raw << " at PC: " << instr.pc << " "
+    /*cout << "Decoded instruction: " << std::hex << instr.raw << " at PC: " << instr.pc << " "
          << Type_string(instr.type) << std::dec << " " << instr.rs1 << " " << instr.rs2 << " "
-         << instr.rd << std::endl;
+         << instr.rd << std::endl;*/
 
-    // 分配ROB条目
     uint32_t rob_idx = allocate_rob_entry(cpu);
 
-    // 设置ROB条目
     ROBEntry &rob_entry = cpu.rob[rob_idx];
     rob_entry.busy = true;
     rob_entry.instr_type = instr.type;
@@ -116,7 +111,6 @@ void CPUCore::decode_rename_stage(CPU_State &cpu) {
         rob_entry.target_pc = instr.pc + instr.imm;
     }
 
-    // 消费取指缓存条目
     fetch_entry.valid = false;
     cpu.fetch_buffer_head = (cpu.fetch_buffer_head + 1) % FETCH_BUFFER_SIZE;
     cpu.fetch_buffer_size--;
@@ -164,9 +158,10 @@ void CPUCore::dispatch_stage(CPU_State &cpu) {
                 rs_entry.Vk = 0;
                 rs_entry.Qk = ROB_SIZE;
             }
-            cout << "dispatch instruction: " << std::dec << rs_entry.Qj << " " << rs_entry.Qk << " "
+            /*cout << "dispatch instruction: " << std::dec << rs_entry.Qj << " " << rs_entry.Qk << "
+               "
                  << rs_entry.Vj << " " << rs_entry.Vk << " " << Type_string(rs_entry.op) << " "
-                 << needs_rs2 << std::dec << std::endl;
+                 << needs_rs2 << std::dec << std::endl;*/
             // cout << "RENAME:" << Type_string(rob_entry.instr_type)<<;
             rename_registers(cpu, rob_entry, i);
             rob_entry.state = InstrState::Execute;
@@ -200,7 +195,6 @@ void CPUCore::dispatch_stage(CPU_State &cpu) {
             // cout << "ADDRESS"
             //       << " " << LSB_entry.base_value << " " << LSB_entry.base_rob_idx << std::endl;
 
-            // Store指令还需要读取要存储的值
             if (InstructionProcessor::is_store_type(rob_entry.instr_type)) {
                 LSB_entry.value = read_operand(cpu, rob_entry.rs2, LSB_entry.value_rob_idx);
                 LSB_entry.value_ready = (LSB_entry.value_rob_idx == ROB_SIZE);
@@ -216,7 +210,7 @@ void CPUCore::dispatch_stage(CPU_State &cpu) {
             rob_entry.state = InstrState::Execute;
         }
 
-        // 特殊指令处理（LUI, AUIPC, JAL, JALR, HALT）
+        // 特LUI, AUIPC, JAL, JALR, HALT
         else if (rob_entry.instr_type == InstrType::LUI ||
                  rob_entry.instr_type == InstrType::AUIPC ||
                  rob_entry.instr_type == InstrType::JUMP_JAL ||
@@ -233,7 +227,7 @@ void CPUCore::dispatch_stage(CPU_State &cpu) {
             rs_entry.dest_rob_idx = i;
             rs_entry.imm = rob_entry.imm;
 
-            // 对于JALR，需要读取rs1寄存器
+            // JALR
             if (rob_entry.instr_type == InstrType::JUMP_JALR) {
                 rs_entry.Vj = read_operand(cpu, rob_entry.rs1, rs_entry.Qj);
             } else {
@@ -261,11 +255,11 @@ void CPUCore::execute_stage(CPU_State &cpu) {
 
     for (uint32_t i = 0; i < RS_SIZE && alu_units_used < MAX_ALU_UNITS; ++i) {
         RSEntry &rs_entry = cpu.rs_alu[i];
-        if (rs_entry.busy)
-            cout << "Executing instruction: " << std::dec << cpu.rs_alu[i].Qj << " "
-                 << cpu.rs_alu[i].Qk << " " << cpu.rs_alu[i].Vj << " " << cpu.rs_alu[i].Vk
-                 << Type_string(rs_entry.op) << std::dec << std::endl;
-
+        /*if (rs_entry.busy)
+             cout << "Executing instruction: " << std::dec << cpu.rs_alu[i].Qj << " "
+                  << cpu.rs_alu[i].Qk << " " << cpu.rs_alu[i].Vj << " " << cpu.rs_alu[i].Vk
+                  << Type_string(rs_entry.op) << std::dec << std::endl;
+ */
         if (!rs_entry.busy || !rs_entry.operands_ready()) {
             continue;
         }
@@ -289,14 +283,13 @@ void CPUCore::execute_stage(CPU_State &cpu) {
                 rs_entry.op == InstrType::AUIPC || rs_entry.op == InstrType::JUMP_JAL ||
                 rs_entry.op == InstrType::JUMP_JALR) {
 
-                // 对于AUIPC、JAL、JALR，第一个操作数应该是PC
+                // AUIPC、JAL、JALR
                 if (rs_entry.op == InstrType::AUIPC || rs_entry.op == InstrType::JUMP_JAL ||
                     rs_entry.op == InstrType::JUMP_JALR) {
 
                     if (rs_entry.op == InstrType::JUMP_JAL || rs_entry.op == InstrType::JUMP_JALR) {
-                        result = rob_entry.pc + 4; // 返回地址写入rd寄存器
+                        result = rob_entry.pc + 4;
 
-                        // 计算跳转目标地址
                         if (rs_entry.op == InstrType::JUMP_JAL) {
                             rob_entry.target_pc = rob_entry.pc + rs_entry.imm;
                         } else if (rs_entry.op == InstrType::JUMP_JALR) {
@@ -420,12 +413,11 @@ void CPUCore::execute_stage(CPU_State &cpu) {
                 }
             }
         }
-        // 执行Store指令 - 只准备数据，不花费周期
+        // 执行Store指令,只准备数据,不花费周期
         else if (InstructionProcessor::is_store_type(LSB_entry.op)) {
 
-            // 检查要存储的值是否就绪
             if (!LSB_entry.value_ready && LSB_entry.value_rob_idx != ROB_SIZE) {
-                // 检查ROB中的值是否已经准备好
+
                 ROBEntry &value_rob = cpu.rob[LSB_entry.value_rob_idx];
                 if (value_rob.state >= InstrState::Writeback) {
                     LSB_entry.value = value_rob.value;
@@ -449,7 +441,7 @@ void CPUCore::execute_stage(CPU_State &cpu) {
 }
 
 void CPUCore::writeback_stage(CPU_State &cpu) {
-    // 在writeback阶段进行CDB广播
+
     for (uint32_t i = 0; i < ROB_SIZE; ++i) {
         ROBEntry &rob_entry = cpu.rob[i];
         if (rob_entry.busy && rob_entry.state == InstrState::Writeback) {
@@ -531,9 +523,9 @@ void CPUCore::commit_stage(CPU_State &cpu) {
         }
     }
 
-    cout << "Committing instruction: " << std::hex << Type_string(rob_entry.instr_type)
+    /* << "Committing instruction: " << std::hex << Type_string(rob_entry.instr_type)
          << " at PC: " << rob_entry.pc << std::dec << " " << rob_entry.dest_reg << " "
-         << rob_entry.value << " " << std::endl;
+         << rob_entry.value << " " << std::endl;*/
 
     if (rob_entry.dest_reg != 0 && !InstructionProcessor::is_branch_type(rob_entry.instr_type)) {
         cpu.arf.regs[rob_entry.dest_reg] = rob_entry.value;
@@ -578,13 +570,7 @@ uint32_t CPUCore::allocate_rob_entry(CPU_State &cpu) {
 
 void CPUCore::free_rob_entry(CPU_State &cpu) {
 
-    // cout << cpu.pc << std::endl;
-    CNT++;
-    cout << CNT << "\n";
-    for (int i = 0; i < 32; i++) {
-        cout << std::dec << cpu.arf.regs[i] << " ";
-    }
-    cout << std::endl;
+    // print(cpu);
 
     cpu.rob[cpu.rob_head].busy = false;
     cpu.rob_head = (cpu.rob_head + 1) % ROB_SIZE;
@@ -649,12 +635,12 @@ uint32_t CPUCore::read_operand(const CPU_State &cpu, uint32_t reg_idx, uint32_t 
         rob_dependency = ROB_SIZE;
         return 0;
     }
-    cout << "Reading operand from reg: " << reg_idx << " " << cpu.rat[reg_idx].busy << std::endl;
+    // cout << "Reading operand from reg: " << reg_idx << " " << cpu.rat[reg_idx].busy << std::endl;
     if (cpu.rat[reg_idx].busy) {
         uint32_t rob_idx = cpu.rat[reg_idx].rob_idx;
         if (cpu.rob[rob_idx].state >= InstrState::Writeback) {
             rob_dependency = ROB_SIZE;
-            cout << rob_idx << " " << cpu.rob[rob_idx].value << std::endl;
+            //  cout << rob_idx << " " << cpu.rob[rob_idx].value << std::endl;
             return cpu.rob[rob_idx].value;
         } else {
             rob_dependency = rob_idx;
@@ -766,12 +752,7 @@ void CPUCore::handle_branch_misprediction(CPU_State &cpu, uint32_t correct_pc) {
 }
 
 void CPUCore::flush_pipeline(CPU_State &cpu) {
-    CNT++;
-    cout << CNT << "\n";
-    for (int i = 0; i < 32; i++) {
-        cout << std::dec << cpu.arf.regs[i] << " ";
-    }
-    cout << std::endl;
+    // print(cpu);
 
     for (int i = 0; i < FETCH_BUFFER_SIZE; ++i) {
         cpu.fetch_buffer[i].valid = false;
@@ -806,4 +787,13 @@ void CPUCore::flush_pipeline(CPU_State &cpu) {
     }
 
     cpu.pipeline_flushed = true;
+}
+
+void print(CPU_State &cpu) {
+    CNT++;
+    cout << CNT << "\n";
+    for (int i = 0; i < 32; i++) {
+        cout << std::dec << cpu.arf.regs[i] << " ";
+    }
+    cout << std::endl;
 }

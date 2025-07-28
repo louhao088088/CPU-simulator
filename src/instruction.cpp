@@ -238,11 +238,11 @@ uint32_t InstructionProcessor::execute_alu(InstrType op, uint32_t val1, uint32_t
     case InstrType::LUI:
         return imm;
     case InstrType::AUIPC:
-        return val1 + imm; // val1是PC
+        return val1 + imm;
     case InstrType::JUMP_JAL:
-        return val1 + 4; // 返回地址是PC+4
+        return val1 + 4; 
     case InstrType::JUMP_JALR:
-        return val1 + 4; // 返回地址是PC+4
+        return val1 + 4; 
 
     default:
         return 0;
@@ -271,8 +271,7 @@ bool InstructionProcessor::check_branch_condition(InstrType branch_type, uint32_
 
 int InstructionProcessor::get_execution_cycles(InstrType type) {
     if (is_load_type(type) || is_store_type(type)) {
-        return 3; // 内存操作需要3个周期
+        return 3; 
     }
-    // 其他操作只需要1个周期
     return 1;
 }
