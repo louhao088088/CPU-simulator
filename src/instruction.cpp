@@ -54,7 +54,7 @@ InstrType InstructionProcessor::decode_opcode(uint32_t instruction) {
         }
         break;
 
-    case 0x13: // I-type immediate
+    case 0x13: // I-type
         switch (funct3) {
         case 0x0:
             return InstrType::ALU_ADDI;
@@ -128,9 +128,7 @@ InstrType InstructionProcessor::decode_opcode(uint32_t instruction) {
         return InstrType::JUMP_JALR;
     }
 
-    // 检查HALT指令
-
-    return InstrType::ALU_ADD; // 默认值
+    return InstrType::HALT; 
 }
 
 int32_t InstructionProcessor::extract_immediate(uint32_t instruction, InstrType type) {
@@ -140,7 +138,7 @@ int32_t InstructionProcessor::extract_immediate(uint32_t instruction, InstrType 
     case 0x13:                                          // I-type
     case 0x03:                                          // Load
     case 0x67:                                          // JALR
-        return static_cast<int32_t>(instruction) >> 20; // 符号扩展
+        return static_cast<int32_t>(instruction) >> 20; 
 
     case 0x23: // Store (S-type)
         return ((instruction >> 7) & 0x1F) | (((int32_t) instruction >> 25) << 5);
@@ -152,7 +150,7 @@ int32_t InstructionProcessor::extract_immediate(uint32_t instruction, InstrType 
         uint32_t imm_4_1 = (instruction >> 8) & 0xF;
         uint32_t imm_11 = (instruction >> 7) & 1;
         uint32_t imm = (imm_12 << 12) | (imm_11 << 11) | (imm_10_5 << 5) | (imm_4_1 << 1);
-        return imm_12 ? (imm | 0xFFFFF000) : imm; // 符号扩展
+        return imm_12 ? (imm | 0xFFFFF000) : imm;
     }
 
     case 0x37: // LUI (U-type)
@@ -166,7 +164,7 @@ int32_t InstructionProcessor::extract_immediate(uint32_t instruction, InstrType 
         uint32_t imm_11 = (instruction >> 20) & 1;
         uint32_t imm_19_12 = (instruction >> 12) & 0xFF;
         uint32_t imm = (imm_20 << 20) | (imm_19_12 << 12) | (imm_11 << 11) | (imm_10_1 << 1);
-        return imm_20 ? (imm | 0xFFE00000) : imm; // 符号扩展
+        return imm_20 ? (imm | 0xFFE00000) : imm; 
     }
     }
 
@@ -192,7 +190,7 @@ bool InstructionProcessor::is_store_type(InstrType type) {
 uint32_t InstructionProcessor::execute_alu(InstrType op, uint32_t val1, uint32_t val2,
                                            int32_t imm) {
     switch (op) {
-    // R-type指令
+    // R-type
     case InstrType::ALU_ADD:
         return val1 + val2;
     case InstrType::ALU_SUB:
@@ -214,7 +212,7 @@ uint32_t InstructionProcessor::execute_alu(InstrType op, uint32_t val1, uint32_t
     case InstrType::ALU_SLTU:
         return val1 < val2 ? 1 : 0;
 
-    // I-type立即数操作
+    // I-type
     case InstrType::ALU_ADDI:
         return val1 + imm;
     case InstrType::ALU_SLTI:

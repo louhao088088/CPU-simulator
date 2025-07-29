@@ -19,12 +19,12 @@ class CPUCore {
     uint64_t get_branch_mispredictions() const { return branch_mispredictions_; }
 
   private:
-    void commit_stage(CPU_State &cpu);
-    void writeback_stage(CPU_State &cpu);
-    void execute_stage(CPU_State &cpu);
-    void dispatch_stage(CPU_State &cpu);
-    void decode_rename_stage(CPU_State &cpu);
-    void fetch_stage(CPU_State &cpu);
+    void commit_stage(CPU_State &cpu);    // 提交阶段（写到寄存器和内存，其中store要3的时间）
+    void writeback_stage(CPU_State &cpu); // 写回阶段（广播操作）
+    void execute_stage(CPU_State &cpu);   // 具体写指令阶段  （load要3的时间）
+    void dispatch_stage(CPU_State &cpu);  // 分配指令预约栈  （ALU 和 LSB）
+    void decode_rename_stage(CPU_State &cpu); //解码指令
+    void fetch_stage(CPU_State &cpu);     //读取指令
 
     // ROB管理
     bool rob_full(const CPU_State &cpu) const;
@@ -46,7 +46,7 @@ class CPUCore {
     void rename_registers(CPU_State &cpu, const ROBEntry &rob_entry, uint32_t rob_idx);
     uint32_t read_operand(const CPU_State &cpu, uint32_t reg_idx, uint32_t &rob_dependency);
 
-    // CDB广播
+    // 广播
     void broadcast_result(CPU_State &cpu, uint32_t rob_idx, uint32_t value);
 
     // 内存依赖检查

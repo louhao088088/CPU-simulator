@@ -16,6 +16,7 @@ const int FETCH_BUFFER_SIZE = 5;
 const uint32_t MAX_ALU_UNITS = 1;
 const uint32_t MAX_LOAD_UNITS = 1;
 
+//指令类别
 enum class InstrType {
     ALU_ADD,
     ALU_SUB,
@@ -76,22 +77,62 @@ enum class InstrState {
     Commit     // 可以提交
 };
 
-// 寄存器别名表
-struct RATEntry {
-    bool busy;        // 是否被某个在执行的指令预定
-    uint32_t rob_idx; // 预定它的指令的ROB索引
+// 寄存器
+struct Registers {
+    struct Reg {
+        uint32_t value;   // 架构寄存器值
+        bool busy;        // 是否被预定
+        uint32_t rob_idx; //  预定它的ROB索引
 
-    RATEntry() : busy(false), rob_idx(0) {}
-};
+        Reg() : value(0), busy(false), rob_idx(ROB_SIZE) {}
+    };
 
-// 架构寄存器
-struct ArchRegisterFile {
-    uint32_t regs[32];
+    Reg reg[32];
 
-    ArchRegisterFile() {
-        for (int i = 0; i < 32; ++i) {
-            regs[i] = 0;
+    Registers() {
+        reg[0].value = 0;
+        reg[0].busy = false;
+    }
+
+    uint32_t get_value(uint32_t reg_idx) const { return reg[reg_idx].value; }
+    uint32_t get_rob_index(uint32_t reg_idx) const { return reg[reg_idx].rob_idx; }
+
+    void set_value(uint32_t reg_idx, uint32_t value) {
+        if (reg_idx != 0) {
+            reg[reg_idx].value = value;
         }
+    }
+
+    bool is_busy(uint32_t reg_idx) const { return (reg_idx == 0) ? false : reg[reg_idx].busy; }
+
+    bool check_buzy(uint32_t reg_idx, uint32_t rob_idx) {
+        if (reg[reg_idx].busy && reg[reg_idx].rob_idx == rob_idx)
+            return 1;
+        return 0;
+    }
+
+    void set_busy(uint32_t reg_idx, uint32_t rob_idx) {
+        if (reg_idx != 0) {
+            reg[reg_idx].busy = true;
+            reg[reg_idx].rob_idx = rob_idx;
+        }
+    }
+
+    void clear_busy(uint32_t reg_idx) {
+        if (reg_idx != 0) {
+            reg[reg_idx].busy = false;
+            reg[reg_idx].rob_idx = ROB_SIZE;
+        }
+    }
+    void flush() {
+        for (int i = 0; i < 32; i++)
+            reg[i].busy = 0, reg[i].rob_idx = ROB_SIZE;
+    }
+    void print_status() {
+        for (int i = 0; i < 32; i++) {
+            cout << reg[i].value << " ";
+        }
+        cout << "\n";
     }
 };
 
@@ -176,25 +217,22 @@ struct BroadcastResult {
 
 // CPU状态
 struct CPU_State {
-    uint32_t pc;                 // 程序计数器
-    ArchRegisterFile arf;        // 架构寄存器文件
+    uint32_t pc;                 // 内存访问地址
+    Registers Regs;              // 寄存器
     uint8_t memory[MEMORY_SIZE]; // 内存
 
-    // 取指缓存队列
+    FetchBufferEntry fetch_buffer[FETCH_BUFFER_SIZE]; // 指令缓存队列 // 寄存器别名表
+    ROBEntry rob[ROB_SIZE];                           // 重排序缓冲区
+    RSEntry rs_alu[RS_SIZE];                          // ALU预约站
+    RSEntry rs_branch[RS_SIZE / 2];                   // 分支预约站
+    LSBEntry LSB[LSB_SIZE];                           // Load/Store队列
 
-    FetchBufferEntry fetch_buffer[FETCH_BUFFER_SIZE]; // 指令缓存队列
+    // 指令缓存队列
     int fetch_buffer_head;
     int fetch_buffer_tail;
     int fetch_buffer_size;
 
-    // 乱序执行
-    RATEntry rat[32];               // 寄存器别名表
-    ROBEntry rob[ROB_SIZE];         // 重排序缓冲区
-    RSEntry rs_alu[RS_SIZE];        // ALU预约站
-    RSEntry rs_branch[RS_SIZE / 2]; // 分支预约站
-    LSBEntry LSB[LSB_SIZE];         // Load/Store队列
-
-    // ROB
+    // ROB队列
     uint32_t rob_head;
     uint32_t rob_tail;
     uint32_t rob_size;

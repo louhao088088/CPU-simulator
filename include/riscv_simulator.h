@@ -7,21 +7,21 @@ class CPUCore;
 
 class RISCV_Simulator {
   private:
-    CPU_State cpu;
-    bool is_halted;
-    CPUCore *cpu_core;
+    CPU_State cpu;      //cpu具体信息
+    bool is_halted;     //是否停机
+    CPUCore *cpu_core;  //cpu的核心步骤
 
   public:
     RISCV_Simulator();
     ~RISCV_Simulator();
 
-    void load_program();
-    void run();
+    void load_program();    // 读取指令
+    void run();             // 运行主程序
 
   private:
-    void tick();
-    uint32_t fetch_instruction();
-    void print_result();
+    void tick();            //模拟cpu每一秒操作
+    uint32_t fetch_instruction();  //读取指令
+    void print_result();          //输出结果
 };
 
 #endif

@@ -12,9 +12,7 @@ CPU_State::CPU_State()
         fetch_buffer[i] = FetchBufferEntry();
     }
 
-    for (int i = 0; i < 32; ++i) {
-        rat[i] = RATEntry();
-    }
+    Regs.flush();
 
     for (int i = 0; i < ROB_SIZE; ++i) {
         rob[i] = ROBEntry();
