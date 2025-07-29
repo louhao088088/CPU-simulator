@@ -68,6 +68,6 @@ uint32_t RISCV_Simulator::fetch_instruction() {
 }
 
 void RISCV_Simulator::print_result() {
-    uint32_t result = cpu.Regs.get_value(10);
+    uint32_t result = cpu.Regs.get_value(10) & 0xFF;
     std::cout << std::dec << result << std::endl;
 }
