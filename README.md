@@ -5,18 +5,19 @@
 ## 项目结构
 
 ```
-├── include/             # 头文件
-│   ├── cpu_state.h      # CPU状态定义
-│   ├── instruction.h    # 指令处理
-│   └── riscv_simulator.h# 模拟器主类
-├── src/                 # 源代码
-│   ├── cpu_state.cpp 
+├── include/                # 头文件
+│   ├── cpu_state.h         # CPU状态定义
+│   ├── instruction.h       # 指令处理
+|   ├── process.h           # CPU具体工作方式
+│   └── riscv_simulator.h   # 模拟器主类
+├── src/                    # 源代码
+│   ├── cpu_state.cpp
 │   ├── instruction.cpp
-|   ├── processor.cpp    # 乱序执行
-│   └── riscv_simulator.cpp
-├── main.cpp             # 程序入口
-├── sample/              # 样本测试数据
-└── reference/           # 参考文档
+|   ├── processor.cpp       # CPU 内部执行
+│   └── riscv_simulator.cpp # 外部宏观执行
+├── main.cpp                # 程序入口
+├── sample/                 # 样本测试数据
+└── reference/              # 参考文档
 ```
 
 ## 支持的指令
@@ -43,4 +44,3 @@
 
 - 程序会在遇到 `0x0ff00513` 指令时停止执行
 - 结果输出为寄存器 x10 的低 8 位
-- 内存大小限制为 1MB
