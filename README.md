@@ -30,9 +30,9 @@
 - **S-type**: SB, SH, SW
 - **R-type**: ADD, SUB, SLL, SLT, SLTU, XOR, SRL, SRA, OR, AND
 
-## 版本说明
+## 历史版本说明
 
-- **原始版本**: `simpleCPU.cpp` 单文件实现单流水 CPU
+`simpleCPU.cpp` 单文件实现单流水 CPU
 
 ## 实现功能
 
