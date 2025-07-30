@@ -12,9 +12,10 @@ const uint32_t HALT_INSTRUCTION = 0x0ff00513;
 const int ROB_SIZE = 5;
 const int RS_SIZE = 16;
 const int LSB_SIZE = 16;
+const int BROAD_SIZE = 16;
 const int FETCH_BUFFER_SIZE = 5;
-const uint32_t MAX_ALU_UNITS = 1;
-const uint32_t MAX_LOAD_UNITS = 1;
+const int MAX_ALU_UNITS = 1;
+const int MAX_LOAD_UNITS = 1;
 
 //指令类别
 enum class InstrType {
@@ -105,7 +106,7 @@ struct Registers {
 
     bool is_busy(uint32_t reg_idx) const { return (reg_idx == 0) ? false : reg[reg_idx].busy; }
 
-    bool check_buzy(uint32_t reg_idx, uint32_t rob_idx) {
+    bool check_buzy(uint32_t reg_idx, uint32_t rob_idx) const {
         if (reg[reg_idx].busy && reg[reg_idx].rob_idx == rob_idx)
             return 1;
         return 0;
@@ -128,7 +129,7 @@ struct Registers {
         for (int i = 0; i < 32; i++)
             reg[i].busy = 0, reg[i].rob_idx = ROB_SIZE;
     }
-    void print_status() {
+    void print_status() const {
         for (int i = 0; i < 32; i++) {
             cout << reg[i].value << " ";
         }
@@ -187,7 +188,6 @@ struct LSBEntry {
     uint32_t value;        // 要存储的值
     uint32_t dest_rob_idx; // 对应的ROB条目索引
     bool address_ready;    // 地址是否已计算
-    bool value_ready;      // 值是否就绪
     uint32_t rob_idx;      // 在ROB中的位置
 
     // 地址计算操作数
@@ -202,7 +202,7 @@ struct LSBEntry {
     bool execute_completed; // 标记execute阶段是否已完成
 
     LSBEntry()
-        : busy(false), address_ready(false), value_ready(false), base_rob_idx(0), value_rob_idx(0),
+        : busy(false), address_ready(false), base_rob_idx(0), value_rob_idx(0),
           execution_cycles_left(0), execute_completed(false) {}
 };
 
@@ -213,6 +213,10 @@ struct BroadcastResult {
     uint32_t value;   // 广播的值
 
     BroadcastResult() : valid(false), rob_idx(0), value(0) {}
+};
+
+struct CDB {
+    BroadcastResult result[BROAD_SIZE];
 };
 
 // CPU状态
@@ -243,6 +247,10 @@ struct CPU_State {
     // 流水线状态
     bool fetch_stalled;    // 取指是否停滞
     bool pipeline_flushed; // 流水线是否被冲刷
+
+    bool clear_flag;  //标记上回合是否被清空
+    bool commit_flag; // 周期中有commit
+    uint32_t next_pc;
 
     CPU_State();
 };

@@ -90,8 +90,8 @@ class RISCV_Simulator {
             std::cout << cpu.regs[i] << " ";
         std::cout << "\n";
 
-        if (cnt > 10000)
-            exit(0);
+       // if (cnt > 10000)
+       //     exit(0);
     }
 
     uint32_t fetch_instruction() {
@@ -263,8 +263,9 @@ class RISCV_Simulator {
                 if (rd != 0)
                     cpu.regs[rd] = static_cast<int32_t>(static_cast<int8_t>(cpu.memory[address]));
 
-                std::cout << "lb " << std::hex << " " << address << std::dec << " " << rs1 << " "
-                          << offset << " " << cpu.regs[rs1] << " " << cpu.regs[rd] << "\n";
+                //      std::cout << "lb " << std::hex << " " << address << std::dec << " " << rs1
+                //      << " "
+                //               << offset << " " << cpu.regs[rs1] << " " << cpu.regs[rd] << "\n";
 
             } // Load Byte
             else if (funct3 == 0b001) {
@@ -313,7 +314,7 @@ class RISCV_Simulator {
                                    (static_cast<uint32_t>(cpu.memory[address + 2]) << 16) |
                                    (static_cast<uint32_t>(cpu.memory[address + 3]) << 24);
 
-                std::cout << "lw " << std::hex << " " << address << std::dec << " " << rs1 << " "
+                std::cout << "lw " << std::dec << " " << address << std::dec << " " << rs1 << " "
                           << offset << " " << cpu.regs[rs1] << " " << cpu.regs[rd] << "\n";
             } // Load Word
             else if (funct3 == 0b100) {
@@ -329,8 +330,9 @@ class RISCV_Simulator {
                 if (rd != 0)
                     cpu.regs[rd] = cpu.memory[address];
 
-                std::cout << "lbu " << std::hex << " " << address << std::dec << " " << rs1 << " "
-                          << offset << " " << cpu.regs[rs1] << " " << cpu.regs[rd] << "\n";
+                //      std::cout << "lbu " << std::hex << " " << address << std::dec << " " << rs1
+                //      << " "
+                //               << offset << " " << cpu.regs[rs1] << " " << cpu.regs[rd] << "\n";
             } // Load Byte, Unsigned
             else if (funct3 == 0b101) {
                 uint32_t address =
@@ -351,8 +353,9 @@ class RISCV_Simulator {
                     cpu.regs[rd] = static_cast<uint32_t>(cpu.memory[address]) |
                                    (static_cast<uint32_t>(cpu.memory[address + 1]) << 8);
 
-                std::cout << "lhu " << std::hex << " " << address << std::dec << " " << rs1 << " "
-                          << offset << " " << cpu.regs[rs1] << " " << cpu.regs[rd] << "\n";
+                //   std::cout << "lhu " << std::hex << " " << address << std::dec << " " << rs1 <<
+                //   " "
+                //            << offset << " " << cpu.regs[rs1] << " " << cpu.regs[rd] << "\n";
 
             } // Load Halfword, Unsigned
             else {
@@ -361,7 +364,7 @@ class RISCV_Simulator {
                 is_halted = true;
             }
 
-            cout << std::dec << " " << rd << " " << rs1 << " " << offset << "\n";
+            // cout << std::dec << " " << rd << " " << rs1 << " " << offset << "\n";
             break;
         } // I-TYPE LOAD
 
@@ -384,8 +387,8 @@ class RISCV_Simulator {
                     return;
                 }
                 cpu.memory[address] = static_cast<uint8_t>(cpu.regs[rs2]);
-                std::cout << "sb " << std::hex << " " << address << " " << rs2 << " "
-                          << cpu.regs[rs2] << std::dec << "\n";
+                //  std::cout << "sb " << std::hex << " " << address << " " << rs2 << " "
+                //           << cpu.regs[rs2] << std::dec << "\n";
             } // Store Byte
             else if (funct3 == 0b001) {
                 uint32_t address =
@@ -405,8 +408,8 @@ class RISCV_Simulator {
 
                 cpu.memory[address] = static_cast<uint8_t>(cpu.regs[rs2]);
                 cpu.memory[address + 1] = static_cast<uint8_t>(cpu.regs[rs2] >> 8);
-                std::cout << "sh " << std::hex << " " << address << " " << rs2 << " "
-                          << cpu.regs[rs2] << std::dec << "\n";
+                //  std::cout << "sh " << std::hex << " " << address << " " << rs2 << " "
+                //            << cpu.regs[rs2] << std::dec << "\n";
             } // Store Halfword
             else if (funct3 == 0b010) {
                 uint32_t address =
@@ -429,15 +432,16 @@ class RISCV_Simulator {
                 cpu.memory[address + 1] = static_cast<uint8_t>(cpu.regs[rs2] >> 8);
                 cpu.memory[address + 2] = static_cast<uint8_t>(cpu.regs[rs2] >> 16);
                 cpu.memory[address + 3] = static_cast<uint8_t>(cpu.regs[rs2] >> 24);
-                std::cout << "sw " << std::hex << " " << address << " " << rs2 << " "
-                          << cpu.regs[rs2] << std::dec << "\n";
+                std::cout << "sw " << std::dec << " " << address << " " << rs2 << " "
+                          << cpu.regs[rs1] << " " << offset << " " << cpu.regs[rs2] << std::dec
+                          << "\n";
             } // Store Word
             else {
                 std::cout << "Error: Unknown store instruction " << std::hex << instruction
                           << " at pc " << cpu.pc << std::endl;
                 is_halted = true;
             }
-            cout << std::dec << " " << rs1 << " " << rs2 << " " << offset << "\n";
+            //  cout << std::dec << " " << rs1 << " " << rs2 << " " << offset << "\n";
             break;
         } // S-TYPE STORE
         case 0b0010011: {
