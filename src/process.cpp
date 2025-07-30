@@ -6,29 +6,29 @@
 #include <ostream>
 int CNT = 0;
 
-CPUCore::CPUCore() : cycle_count_(0), instruction_count_(0), branch_mispredictions_(0) {}
+CPU::CPU() : cycle_count_(0), instruction_count_(0), branch_mispredictions_(0) {}
 
-void CPUCore::tick(CPU_State &now_state) {
-    CPU_State next_state = now_state;
+void CPU::tick(CPU_State &cpu) {
+    CPU_Core next_state = cpu.core;
 
-    commit_stage(now_state, next_state);
+    commit_stage(cpu.core, next_state, cpu.memory);
 
-    writeback_stage(now_state, next_state);
-    execute_stage(now_state, next_state);
+    writeback_stage(cpu.core, next_state);
+    execute_stage(cpu.core, next_state, cpu.memory);
 
-    dispatch_stage(now_state, next_state);
+    dispatch_stage(cpu.core, next_state);
 
-    decode_rename_stage(now_state, next_state);
+    decode_rename_stage(cpu.core, next_state, cpu.memory);
 
-    fetch_stage(now_state, next_state);
+    fetch_stage(cpu.core, next_state, cpu.memory);
 
-    now_state = next_state;
+    cpu.core = next_state;
 
     ++cycle_count_;
     // cout << "CYCLE:" << cycle_count_ << "\n";
 }
 
-void CPUCore::fetch_stage(const CPU_State &now_state, CPU_State &next_state) {
+void CPU::fetch_stage(const CPU_Core &now_state, CPU_Core &next_state, const uint8_t memory[]) {
     int pc = now_state.pc;
     if (now_state.clear_flag) {
         flush_pipeline(next_state);
@@ -47,8 +47,8 @@ void CPUCore::fetch_stage(const CPU_State &now_state, CPU_State &next_state) {
 
     if (pc < MEMORY_SIZE - 3) {
 
-        uint32_t instruction = now_state.memory[pc] | (now_state.memory[pc + 1] << 8) |
-                               (now_state.memory[pc + 2] << 16) | (now_state.memory[pc + 3] << 24);
+        uint32_t instruction =
+            memory[pc] | (memory[pc + 1] << 8) | (memory[pc + 2] << 16) | (memory[pc + 3] << 24);
 
         int tail = now_state.fetch_buffer_tail;
         if (now_state.clear_flag) {
@@ -70,7 +70,8 @@ void CPUCore::fetch_stage(const CPU_State &now_state, CPU_State &next_state) {
     }
 }
 
-void CPUCore::decode_rename_stage(const CPU_State &now_state, CPU_State &next_state) {
+void CPU::decode_rename_stage(const CPU_Core &now_state, CPU_Core &next_state,
+                              const uint8_t memory[]) {
 
     if (now_state.clear_flag) {
         return;
@@ -141,7 +142,7 @@ void CPUCore::decode_rename_stage(const CPU_State &now_state, CPU_State &next_st
     ++instruction_count_;
 }
 
-void CPUCore::dispatch_stage(const CPU_State &now_state, CPU_State &next_state) {
+void CPU::dispatch_stage(const CPU_Core &now_state, CPU_Core &next_state) {
     if (now_state.clear_flag) {
         return;
     }
@@ -199,7 +200,6 @@ void CPUCore::dispatch_stage(const CPU_State &now_state, CPU_State &next_state) 
             }
 
             const uint32_t LSB_idx = allocate_LSB_entry(now_state);
-            const LSBEntry LSB_entry_now = now_state.LSB[LSB_idx];
             LSBEntry &LSB_entry = next_state.LSB[LSB_idx];
 
             LSB_entry.busy = true;
@@ -284,7 +284,7 @@ void CPUCore::dispatch_stage(const CPU_State &now_state, CPU_State &next_state) 
     }
 }
 
-void CPUCore::execute_stage(const CPU_State &now_state, CPU_State &next_state) {
+void CPU::execute_stage(const CPU_Core &now_state, CPU_Core &next_state, const uint8_t memory[]) {
     if (now_state.clear_flag) {
         return;
     }
@@ -424,23 +424,23 @@ void CPUCore::execute_stage(const CPU_State &now_state, CPU_State &next_state) {
                         switch (LSB_entry_now.op) {
                         case InstrType::LOAD_LB:
                             value = static_cast<int32_t>(
-                                static_cast<int8_t>(now_state.memory[LSB_entry_now.address]));
+                                static_cast<int8_t>(memory[LSB_entry_now.address]));
                             break;
                         case InstrType::LOAD_LBU:
-                            value = now_state.memory[LSB_entry_now.address];
+                            value = memory[LSB_entry_now.address];
                             break;
                         case InstrType::LOAD_LH:
                             value = static_cast<int32_t>(
                                 static_cast<int16_t>(*reinterpret_cast<const uint16_t *>(
-                                    &now_state.memory[LSB_entry_now.address])));
+                                    &memory[LSB_entry_now.address])));
                             break;
                         case InstrType::LOAD_LHU:
-                            value = *reinterpret_cast<const uint16_t *>(
-                                &now_state.memory[LSB_entry_now.address]);
+                            value =
+                                *reinterpret_cast<const uint16_t *>(&memory[LSB_entry_now.address]);
                             break;
                         case InstrType::LOAD_LW:
-                            value = *reinterpret_cast<const uint32_t *>(
-                                &now_state.memory[LSB_entry_now.address]);
+                            value =
+                                *reinterpret_cast<const uint32_t *>(&memory[LSB_entry_now.address]);
                             //      cout << "LW"
                             //           << " " << LSB_entry_now.address << " " << value <<
                             //           std::endl;
@@ -485,7 +485,7 @@ void CPUCore::execute_stage(const CPU_State &now_state, CPU_State &next_state) {
     }
 }
 
-void CPUCore::writeback_stage(const CPU_State &now_state, CPU_State &next_state) {
+void CPU::writeback_stage(const CPU_Core &now_state, CPU_Core &next_state) {
     if (now_state.clear_flag) {
         return;
     }
@@ -499,7 +499,7 @@ void CPUCore::writeback_stage(const CPU_State &now_state, CPU_State &next_state)
     }
 }
 
-void CPUCore::commit_stage(const CPU_State &now_state, CPU_State &next_state) {
+void CPU::commit_stage(const CPU_Core &now_state, CPU_Core &next_state, uint8_t memory[]) {
     if (now_state.clear_flag) {
         return;
     }
@@ -542,17 +542,16 @@ void CPUCore::commit_stage(const CPU_State &now_state, CPU_State &next_state) {
                         //         std::endl;
                         switch (LSB_entry_now.op) {
                         case InstrType::STORE_SB:
-                            next_state.memory[LSB_entry_now.address] =
+                            memory[LSB_entry_now.address] =
                                 static_cast<uint8_t>(LSB_entry_now.value);
                             break;
                         case InstrType::STORE_SH:
-                            *reinterpret_cast<uint16_t *>(
-                                &next_state.memory[LSB_entry_now.address]) =
+                            *reinterpret_cast<uint16_t *>(&memory[LSB_entry_now.address]) =
                                 static_cast<uint16_t>(LSB_entry_now.value);
                             break;
                         case InstrType::STORE_SW:
-                            *reinterpret_cast<uint32_t *>(
-                                &next_state.memory[LSB_entry_now.address]) = LSB_entry_now.value;
+                            *reinterpret_cast<uint32_t *>(&memory[LSB_entry_now.address]) =
+                                LSB_entry_now.value;
                             break;
                         default:
                             break;
@@ -597,30 +596,28 @@ void CPUCore::commit_stage(const CPU_State &now_state, CPU_State &next_state) {
     free_rob_entry(next_state);
 }
 
-void print(CPU_State &cpu) {
+void print(CPU_Core &cpu) {
     CNT++;
     cout << CNT << "\n";
     cpu.Regs.print_status();
 }
 
-bool CPUCore::rob_full(const CPU_State &cpu) const {
+bool CPU::rob_full(const CPU_Core &cpu) const {
     //   cout << "ROBFULL" << cpu.rob_size << " " << cpu.commit_flag << " "
     //        << "\n";
     return ((cpu.rob_size >= ROB_SIZE - 1) && (!cpu.commit_flag));
 }
 
-bool CPUCore::rob_empty(const CPU_State &cpu) const {
-    return (cpu.rob_size - cpu.commit_flag) == 0;
-}
+bool CPU::rob_empty(const CPU_Core &cpu) const { return (cpu.rob_size - cpu.commit_flag) == 0; }
 
-void CPUCore::free_rob_entry(CPU_State &cpu) {
-   // print(cpu);
+void CPU::free_rob_entry(CPU_Core &cpu) {
+    // print(cpu);
     cpu.commit_flag = 1;
     cpu.rob[cpu.rob_head].busy = false;
     cpu.rob_head = (cpu.rob_head + 1) % ROB_SIZE;
 }
 
-bool CPUCore::rs_available(const CPU_State &cpu, InstrType type) const {
+bool CPU::rs_available(const CPU_Core &cpu, InstrType type) const {
     for (uint32_t i = 0; i < RS_SIZE; ++i) {
         if (!cpu.rs_alu[i].busy) {
             return true;
@@ -629,7 +626,7 @@ bool CPUCore::rs_available(const CPU_State &cpu, InstrType type) const {
     return false;
 }
 
-uint32_t CPUCore::allocate_rs_entry(const CPU_State &cpu, InstrType type) {
+uint32_t CPU::allocate_rs_entry(const CPU_Core &cpu, InstrType type) {
     for (uint32_t i = 0; i < RS_SIZE; ++i) {
         if (!cpu.rs_alu[i].busy) {
             return i;
@@ -638,11 +635,11 @@ uint32_t CPUCore::allocate_rs_entry(const CPU_State &cpu, InstrType type) {
     return 0;
 }
 
-void CPUCore::free_rs_entry(CPU_State &cpu, uint32_t rs_idx, InstrType type) {
+void CPU::free_rs_entry(CPU_Core &cpu, uint32_t rs_idx, InstrType type) {
     cpu.rs_alu[rs_idx].busy = false;
 }
 
-bool CPUCore::LSB_available(const CPU_State &cpu) const {
+bool CPU::LSB_available(const CPU_Core &cpu) const {
     for (uint32_t i = 0; i < LSB_SIZE; ++i) {
         if (!cpu.LSB[i].busy) {
             return true;
@@ -651,7 +648,7 @@ bool CPUCore::LSB_available(const CPU_State &cpu) const {
     return false;
 }
 
-uint32_t CPUCore::allocate_LSB_entry(const CPU_State &cpu) {
+uint32_t CPU::allocate_LSB_entry(const CPU_Core &cpu) {
     for (uint32_t i = 0; i < LSB_SIZE; ++i) {
         if (!cpu.LSB[i].busy) {
             return i;
@@ -660,16 +657,16 @@ uint32_t CPUCore::allocate_LSB_entry(const CPU_State &cpu) {
     return 0;
 }
 
-void CPUCore::free_LSB_entry(CPU_State &cpu, uint32_t LSB_idx) { cpu.LSB[LSB_idx].busy = false; }
+void CPU::free_LSB_entry(CPU_Core &cpu, uint32_t LSB_idx) { cpu.LSB[LSB_idx].busy = false; }
 
-void CPUCore::rename_registers(CPU_State &cpu, const ROBEntry &rob_entry, uint32_t rob_idx) {
+void CPU::rename_registers(CPU_Core &cpu, const ROBEntry &rob_entry, uint32_t rob_idx) {
     if (rob_entry.dest_reg != 0) {
         cpu.Regs.set_busy(rob_entry.dest_reg, rob_idx);
     }
 }
 
-uint32_t CPUCore::read_operand(const CPU_State &cpu, uint32_t reg_idx, uint32_t &rob_dependency,
-                               bool &ready) {
+uint32_t CPU::read_operand(const CPU_Core &cpu, uint32_t reg_idx, uint32_t &rob_dependency,
+                           bool &ready) {
     if (reg_idx == 0) {
         rob_dependency = ROB_SIZE;
         return 0;
@@ -692,8 +689,8 @@ uint32_t CPUCore::read_operand(const CPU_State &cpu, uint32_t reg_idx, uint32_t 
     }
 }
 
-void CPUCore::broadcast_result(const CPU_State &now_state, CPU_State &next_state, uint32_t rob_idx,
-                               uint32_t value) {
+void CPU::broadcast_result(const CPU_Core &now_state, CPU_Core &next_state, uint32_t rob_idx,
+                           uint32_t value) {
     next_state.rob[rob_idx].state = InstrState::Commit;
     for (uint32_t i = 0; i < RS_SIZE; ++i) {
         RSEntry &rs = next_state.rs_alu[i];
@@ -729,7 +726,7 @@ void CPUCore::broadcast_result(const CPU_State &now_state, CPU_State &next_state
     }
 }
 
-bool CPUCore::is_earlier_instruction(const CPU_State &cpu, uint32_t rob_idx1, uint32_t rob_idx2) {
+bool CPU::is_earlier_instruction(const CPU_Core &cpu, uint32_t rob_idx1, uint32_t rob_idx2) {
 
     uint32_t pos1, pos2;
 
@@ -748,8 +745,8 @@ bool CPUCore::is_earlier_instruction(const CPU_State &cpu, uint32_t rob_idx1, ui
     return pos1 < pos2;
 }
 
-bool CPUCore::check_load_dependencies(const CPU_State &cpu, uint32_t load_addr,
-                                      uint32_t load_rob_idx, uint32_t &forwarded_value) {
+bool CPU::check_load_dependencies(const CPU_Core &cpu, uint32_t load_addr, uint32_t load_rob_idx,
+                                  uint32_t &forwarded_value) {
     for (uint32_t i = 0; i < LSB_SIZE; ++i) {
         const LSBEntry &LSB = cpu.LSB[i];
 
@@ -777,8 +774,8 @@ bool CPUCore::check_load_dependencies(const CPU_State &cpu, uint32_t load_addr,
     return true;
 }
 
-bool CPUCore::get_load_values(const CPU_State &cpu, uint32_t load_addr, uint32_t load_rob_idx,
-                              uint32_t &forwarded_value) {
+bool CPU::get_load_values(const CPU_Core &cpu, uint32_t load_addr, uint32_t load_rob_idx,
+                          uint32_t &forwarded_value) {
 
     for (uint32_t i = 0; i < LSB_SIZE; ++i) {
         const LSBEntry &LSB = cpu.LSB[i];
@@ -808,16 +805,16 @@ bool CPUCore::get_load_values(const CPU_State &cpu, uint32_t load_addr, uint32_t
     return false;
 }
 
-bool CPUCore::predict_branch_taken(const CPU_State &cpu) { return false; }
+bool CPU::predict_branch_taken(const CPU_Core &cpu) { return false; }
 
-void CPUCore::handle_branch_misprediction(CPU_State &cpu, uint32_t correct_pc) {
-    //print(cpu);
+void CPU::handle_branch_misprediction(CPU_Core &cpu, uint32_t correct_pc) {
+    // print(cpu);
     ++branch_mispredictions_;
     cpu.next_pc = correct_pc;
     flush_pipeline(cpu);
 }
 
-void CPUCore::flush_pipeline(CPU_State &cpu) {
+void CPU::flush_pipeline(CPU_Core &cpu) {
     // cout << "CLEAR\n";
     for (int i = 0; i < FETCH_BUFFER_SIZE; ++i) {
         cpu.fetch_buffer[i].valid = false;

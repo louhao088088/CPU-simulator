@@ -219,11 +219,13 @@ struct CDB {
     BroadcastResult result[BROAD_SIZE];
 };
 
-// CPU状态
-struct CPU_State {
-    uint32_t pc;                 // 内存访问地址
-    Registers Regs;              // 寄存器
-    uint8_t memory[MEMORY_SIZE]; // 内存
+// CPU核心
+struct CPU_Core {
+
+    CPU_Core();
+
+    uint32_t pc;    // 内存访问地址
+    Registers Regs; // 寄存器
 
     FetchBufferEntry fetch_buffer[FETCH_BUFFER_SIZE]; // 指令缓存队列 // 寄存器别名表
     ROBEntry rob[ROB_SIZE];                           // 重排序缓冲区
@@ -232,9 +234,9 @@ struct CPU_State {
     LSBEntry LSB[LSB_SIZE];                           // Load/Store队列
 
     // 指令缓存队列
-    int fetch_buffer_head;
-    int fetch_buffer_tail;
-    int fetch_buffer_size;
+    uint32_t fetch_buffer_head;
+    uint32_t fetch_buffer_tail;
+    uint32_t fetch_buffer_size;
 
     // ROB队列
     uint32_t rob_head;
@@ -252,7 +254,76 @@ struct CPU_State {
     bool commit_flag; // 周期中有commit
     uint32_t next_pc;
 
+};
+
+struct CPU_State {
+    CPU_Core core;
+    uint8_t memory[MEMORY_SIZE];
+
     CPU_State();
+
+    uint32_t &pc() { return core.pc; }
+    const uint32_t &pc() const { return core.pc; }
+
+    uint32_t &rob_head() { return core.rob_head; }
+    const uint32_t &rob_head() const { return core.rob_head; }
+
+    uint32_t &rob_tail() { return core.rob_tail; }
+    const uint32_t &rob_tail() const { return core.rob_tail; }
+
+    uint32_t &rob_size() { return core.rob_size; }
+    const uint32_t &rob_size() const { return core.rob_size; }
+
+    ROBEntry *rob() { return core.rob; }
+    const ROBEntry *rob() const { return core.rob; }
+
+    uint32_t &fetch_buffer_head() { return core.fetch_buffer_head; }
+    const uint32_t &fetch_buffer_head() const { return core.fetch_buffer_head; }
+
+    uint32_t &fetch_buffer_tail() { return core.fetch_buffer_tail; }
+    const uint32_t &fetch_buffer_tail() const { return core.fetch_buffer_tail; }
+
+    uint32_t &fetch_buffer_size() { return core.fetch_buffer_size; }
+    const uint32_t &fetch_buffer_size() const { return core.fetch_buffer_size; }
+
+    FetchBufferEntry *fetch_buffer() { return core.fetch_buffer; }
+    const FetchBufferEntry *fetch_buffer() const { return core.fetch_buffer; }
+
+    bool &clear_flag() { return core.clear_flag; }
+    const bool &clear_flag() const { return core.clear_flag; }
+
+    bool &fetch_stalled() { return core.fetch_stalled; }
+    const bool &fetch_stalled() const { return core.fetch_stalled; }
+
+    uint32_t &next_pc() { return core.next_pc; }
+    const uint32_t &next_pc() const { return core.next_pc; }
+
+    bool &commit_flag() { return core.commit_flag; }
+    const bool &commit_flag() const { return core.commit_flag; }
+
+    bool &pipeline_flushed() { return core.pipeline_flushed; }
+    const bool &pipeline_flushed() const { return core.pipeline_flushed; }
+
+    RSEntry *rs_alu() { return core.rs_alu; }
+    const RSEntry *rs_alu() const { return core.rs_alu; }
+
+    LSBEntry *LSB() { return core.LSB; }
+    const LSBEntry *LSB() const { return core.LSB; }
+
+    Registers &Regs() { return core.Regs; }
+    const Registers &Regs() const { return core.Regs; }
+
+    ROBEntry &rob(size_t index) { return core.rob[index]; }
+    const ROBEntry &rob(size_t index) const { return core.rob[index]; }
+
+    RSEntry &rs_alu(size_t index) { return core.rs_alu[index]; }
+    const RSEntry &rs_alu(size_t index) const { return core.rs_alu[index]; }
+
+    LSBEntry &LSB(size_t index) { return core.LSB[index]; }
+    const LSBEntry &LSB(size_t index) const { return core.LSB[index]; }
+
+    FetchBufferEntry &fetch_buffer(size_t index) { return core.fetch_buffer[index]; }
+    const FetchBufferEntry &fetch_buffer(size_t index) const { return core.fetch_buffer[index]; }
 };
 
 #endif // CPU_STATE_H

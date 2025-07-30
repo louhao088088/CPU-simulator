@@ -1,12 +1,9 @@
 #include "../include/cpu_state.h"
 
-CPU_State::CPU_State()
+CPU_Core::CPU_Core()
     : pc(0), fetch_buffer_head(0), fetch_buffer_tail(0), fetch_buffer_size(0), rob_head(0),
       rob_tail(0), rob_size(0), branch_predictor(false), fetch_stalled(false),
       pipeline_flushed(false), clear_flag(0), commit_flag(0), next_pc(0) {
-    for (int i = 0; i < MEMORY_SIZE; ++i) {
-        memory[i] = 0;
-    }
 
     for (int i = 0; i < FETCH_BUFFER_SIZE; ++i) {
         fetch_buffer[i] = FetchBufferEntry();
@@ -28,6 +25,11 @@ CPU_State::CPU_State()
     for (int i = 0; i < LSB_SIZE; ++i) {
         LSB[i] = LSBEntry();
     }
+}
+
+CPU_State::CPU_State() {
+    for (int i = 0; i < MEMORY_SIZE; i++)
+        memory[i] = 0;
 }
 
 std::string Type_string(InstrType type) {

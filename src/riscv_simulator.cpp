@@ -8,7 +8,7 @@
 
 extern int cnt;
 
-RISCV_Simulator::RISCV_Simulator() : is_halted(false) { cpu_core = new CPUCore(); }
+RISCV_Simulator::RISCV_Simulator() : is_halted(false) { cpu_core = new CPU(); }
 
 RISCV_Simulator::~RISCV_Simulator() { delete cpu_core; }
 
@@ -41,33 +41,34 @@ void RISCV_Simulator::run() {
 
 void RISCV_Simulator::tick() {
     cpu_core->tick(cpu);
-    if (cpu.fetch_stalled) {
+    
+    if (cpu.fetch_stalled()) {
         is_halted = true;
         return;
     }
 
-    if (cpu.pc >= MEMORY_SIZE - 3) {
+    if (cpu.pc() >= MEMORY_SIZE - 3) {
         is_halted = true;
         return;
     }
 }
 
 uint32_t RISCV_Simulator::fetch_instruction() {
-    if (cpu.pc >= MEMORY_SIZE - 3) {
+    if (cpu.pc() >= MEMORY_SIZE - 3) {
         std::cout << "Error: Program Counter out of bounds!" << std::endl;
         is_halted = true;
         return 0;
     }
 
     uint32_t inst = 0;
-    inst |= static_cast<uint32_t>(cpu.memory[cpu.pc + 0]);
-    inst |= static_cast<uint32_t>(cpu.memory[cpu.pc + 1]) << 8;
-    inst |= static_cast<uint32_t>(cpu.memory[cpu.pc + 2]) << 16;
-    inst |= static_cast<uint32_t>(cpu.memory[cpu.pc + 3]) << 24;
+    inst |= static_cast<uint32_t>(cpu.memory[cpu.pc() + 0]);
+    inst |= static_cast<uint32_t>(cpu.memory[cpu.pc() + 1]) << 8;
+    inst |= static_cast<uint32_t>(cpu.memory[cpu.pc() + 2]) << 16;
+    inst |= static_cast<uint32_t>(cpu.memory[cpu.pc() + 3]) << 24;
     return inst;
 }
 
 void RISCV_Simulator::print_result() {
-    uint32_t result = cpu.Regs.get_value(10) & 0xFF;
+    uint32_t result = cpu.Regs().get_value(10) & 0xFF;
     std::cout << std::dec << result << std::endl;
 }
